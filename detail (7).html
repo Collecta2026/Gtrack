@@ -1,0 +1,181 @@
+{% extends "base.html" %}
+{% block heading %}{{ po.po_number }}{% endblock %}
+{% block crumb %}{{ po.supplier.name if po.supplier else '—' }} · {{ po.brand.brand_name if po.brand else '—' }}{% endblock %}
+
+{% block actions %}
+  {% if current_user.can('edit_po') %}
+    <a class="btn ghost sm" href="{{ url_for('purchase_orders.edit', po_id=po.id) }}">{{ t("Edit") }}</a>
+  {% endif %}
+  <a class="btn ghost sm" href="{{ url_for('purchase_orders.index') }}">{{ t("All POs") }}</a>
+{% endblock %}
+
+{% block content %}
+<div class="grid c2" style="align-items:start">
+
+  <div class="card">
+    <div class="card-head">
+      <h2>{{ t("Order") }}</h2>
+      <span class="pill {{ 'green' if po.status == 'fulfilled' else 'navy' }}">{{ po.status_label }}</span>
+    </div>
+    <div class="card-body">
+      <dl class="kv">
+        <dt>Supplier</dt><dd>{{ po.supplier.name if po.supplier else '—' }}</dd>
+        <dt>Brand</dt><dd>{{ po.brand.brand_name if po.brand else '—' }}</dd>
+        <dt>Order date</dt><dd>{{ po.order_date | shortdate }}</dd>
+        <dt>Expected ready</dt>
+        <dd>{{ po.expected_ready_date | shortdate }}
+          {% if po.is_overdue %}<span class="pill red">{{ t("overdue") }}</span>{% endif %}</dd>
+        <dt>Incoterm</dt><dd>{{ po.incoterm or '—' }}</dd>
+        <dt>Currency</dt><dd>{{ po.currency }}</dd>
+        <dt>Total value</dt><dd><strong>{{ po.total_value | money(po.currency) }}</strong></dd>
+        <dt>Raised by</dt><dd>{{ po.created_by.name if po.created_by else '—' }}</dd>
+        {% if po.notes %}<dt>Notes</dt><dd class="small">{{ po.notes }}</dd>{% endif %}
+      </dl>
+
+      {% if current_user.can('edit_po') %}
+      <form method="post" action="{{ url_for('purchase_orders.set_status', po_id=po.id) }}" class="inline-form mt1">
+        <div class="field">
+          <label>{{ t("Change status") }}</label>
+          <select name="status">
+            {% for code, label in statuses %}
+              <option value="{{ code }}" {{ 'selected' if po.status == code }}>{{ label }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <button class="btn sm" type="submit">{{ t("Update") }}</button>
+      </form>
+      {% endif %}
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-head"><h2>{{ t("Linked shipments") }}</h2></div>
+    {% if po.shipments %}
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>{{ t("Reference") }}</th><th>{{ t("Stage") }}</th><th>{{ t("ETA") }}</th><th class="num">{{ t("Value") }}</th></tr></thead>
+        <tbody>
+        {% for s in po.shipments %}
+          <tr>
+            <td><a href="{{ url_for('shipments.detail', shipment_id=s.id) }}">{{ s.reference_no }}</a></td>
+            <td class="small">{{ s.stage_label }}</td>
+            <td class="small nowrap">{{ s.eta | shortdate }}</td>
+            <td class="num small">{{ s.total_value | money }}</td>
+          </tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}<div class="empty">{{ t("No shipment has been raised against this PO yet.") }}</div>{% endif %}
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-head"><h2>{{ t("Order lines") }}</h2></div>
+  {% if po.lines %}
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>{{ t("Description") }}</th><th>{{ t("Model") }}</th><th class="num">{{ t("Ordered") }}</th><th class="num">{{ t("Shipped") }}</th>
+        <th class="num">{{ t("Outstanding") }}</th><th class="num">{{ t("Unit price") }}</th><th class="num">{{ t("Line value") }}</th></tr></thead>
+      <tbody>
+      {% for l in po.lines %}
+        <tr>
+          <td class="small">{{ l.description or '—' }}</td>
+          <td class="small">{{ l.model_no or '—' }}</td>
+          <td class="num small">{{ l.qty_ordered | money }} {{ l.unit }}</td>
+          <td class="num small">{{ l.qty_shipped | money }}</td>
+          <td class="num small">
+            {% if l.qty_outstanding > 0 %}<span class="pill amber">{{ l.qty_outstanding | money }}</span>
+            {% else %}<span class="pill green">{{ t("complete") }}</span>{% endif %}
+          </td>
+          <td class="num small">{{ l.unit_price | money2 }} {{ l.currency }}</td>
+          <td class="num small"><strong>{{ l.line_value | money(l.currency) }}</strong></td>
+        </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}<div class="empty">{{ t("No lines on this order.") }}</div>{% endif %}
+
+  {% if current_user.can('edit_po') %}
+  <div class="card-body">
+    <details class="inline-add" style="border:none;padding:0">
+      <summary>{{ t("Add a line") }}</summary>
+      <form method="post" action="{{ url_for('purchase_orders.add_line', po_id=po.id) }}" style="margin-top:.6rem">
+        <div class="grid c4">
+          <div class="field" style="grid-column:span 2"><label>{{ t("Description") }}</label><input type="text" name="description" required></div>
+          <div class="field"><label>{{ t("Model no") }}</label><input type="text" name="model_no"></div>
+          <div class="field"><label>{{ t("Quantity") }}</label><input type="number" step="any" name="qty_ordered" value="1"></div>
+          <div class="field"><label>{{ t("Unit") }}</label><input type="text" name="unit" value="unit"></div>
+          <div class="field"><label>{{ t("Unit price") }}</label><input type="number" step="any" name="unit_price"></div>
+          <div class="field">
+            <label>{{ t("Currency") }}</label>
+            <select name="currency">{% for c in currencies %}<option {{ 'selected' if c == po.currency }}>{{ c }}</option>{% endfor %}</select>
+          </div>
+        </div>
+        <div class="btn-row mt1"><button class="btn sm" type="submit">{{ t("Add line") }}</button></div>
+      </form>
+    </details>
+  </div>
+  {% endif %}
+</div>
+
+<div class="card">
+  <div class="card-head"><h2>{{ t("Supplier invoices") }}</h2></div>
+  {% if po.invoices %}
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>{{ t("Invoice no") }}</th><th>{{ t("Date") }}</th><th class="num">{{ t("Value") }}</th><th>{{ t("Status") }}</th><th>{{ t("Shipment") }}</th></tr></thead>
+      <tbody>
+      {% for i in po.invoices %}
+        <tr>
+          <td class="small"><strong>{{ i.invoice_no }}</strong></td>
+          <td class="small nowrap">{{ i.invoice_date | shortdate }}</td>
+          <td class="num small">{{ i.invoice_value | money(i.currency) }}</td>
+          <td><span class="pill {{ 'green' if i.payment_status == 'paid' else 'red' }}">{{ i.payment_status_label }}</span></td>
+          <td class="small">
+            {% if i.shipment %}<a href="{{ url_for('shipments.detail', shipment_id=i.shipment.id) }}">{{ i.shipment.reference_no }}</a>
+            {% else %}—{% endif %}
+          </td>
+        </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}<div class="empty">{{ t("No supplier invoice recorded against this PO.") }}</div>{% endif %}
+
+  {% if current_user.can('edit_supplier_invoice') %}
+  <div class="card-body">
+    <details class="inline-add" style="border:none;padding:0">
+      <summary>{{ t("Record a supplier invoice") }}</summary>
+      <form method="post" action="{{ url_for('purchase_orders.add_invoice', po_id=po.id) }}" style="margin-top:.6rem">
+        <div class="grid c4">
+          <div class="field"><label>{{ t("Invoice no") }}</label><input type="text" name="invoice_no" required></div>
+          <div class="field"><label>{{ t("Date") }}</label><input type="date" name="invoice_date" value="{{ today.isoformat() }}"></div>
+          <div class="field"><label>{{ t("Value") }}</label><input type="number" step="any" name="invoice_value" required></div>
+          <div class="field">
+            <label>{{ t("Currency") }}</label>
+            <select name="currency">{% for c in currencies %}<option {{ 'selected' if c == po.currency }}>{{ c }}</option>{% endfor %}</select>
+          </div>
+          <div class="field">
+            <label>{{ t("Shipment") }}</label>
+            <select name="shipment_id">
+              <option value="">—</option>
+              {% for s in po.shipments %}<option value="{{ s.id }}">{{ s.reference_no }}</option>{% endfor %}
+            </select>
+          </div>
+          <div class="field">
+            <label>{{ t("Payment status") }}</label>
+            <select name="payment_status">
+              {% for code, label in payment_statuses %}<option value="{{ code }}">{{ label }}</option>{% endfor %}
+            </select>
+          </div>
+          <div class="field"><label>{{ t("Payment terms") }}</label><input type="text" name="payment_terms"></div>
+        </div>
+        <div class="btn-row mt1"><button class="btn sm" type="submit">{{ t("Record invoice") }}</button></div>
+      </form>
+    </details>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}

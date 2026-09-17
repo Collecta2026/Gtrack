@@ -1,0 +1,49 @@
+{% extends "base.html" %}
+{% block heading %}{{ t("Users") }}{% endblock %}
+{% block crumb %}{{ users | length }} account(s){% endblock %}
+
+{% block content %}
+<div class="card">
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>{{ t("Name") }}</th><th>{{ t("Email") }}</th><th>{{ t("Role") }}</th><th>{{ t("Active") }}</th><th>{{ t("Last sign-in") }}</th></tr></thead>
+      <tbody>
+      {% for u in users %}
+        <tr>
+          <td class="small"><strong>{{ u.name }}</strong></td>
+          <td class="small">{{ u.email }}</td>
+          <td class="small">{{ u.role.role_name if u.role else '—' }}</td>
+          <td>{% if u.is_active %}<span class="pill green">{{ t("Active") }}</span>{% else %}<span class="pill grey">{{ t("Disabled") }}</span>{% endif %}</td>
+          <td class="small nowrap">{{ u.last_login | datetimefmt }}</td>
+        </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  <div class="card-body">
+    <details class="inline-add" style="border:none;padding:0">
+      <summary>{{ t("Add a user") }}</summary>
+      <form method="post" style="margin-top:.6rem">
+        <div class="grid c3">
+          <div class="field"><label>{{ t("Name") }}</label><input type="text" name="name" required></div>
+          <div class="field"><label>{{ t("Email") }}</label><input type="email" name="email" required></div>
+          <div class="field">
+            <label>{{ t("Role") }}</label>
+            <select name="role_id" required>
+              {% for r in roles %}<option value="{{ r.id }}">{{ r.role_name }}</option>{% endfor %}
+            </select>
+          </div>
+          <div class="field"><label>{{ t("Phone") }}</label><input type="text" name="phone"></div>
+          <div class="field"><label>{{ t("Password") }}</label><input type="text" name="password" placeholder="demo1234 if blank"></div>
+          <div class="field">
+            <label>{{ t("Active") }}</label>
+            <select name="is_active"><option value="1" selected>Yes</option><option value="">No</option></select>
+          </div>
+        </div>
+        <div class="btn-row mt1"><button class="btn sm" type="submit">{{ t("Save user") }}</button></div>
+      </form>
+    </details>
+  </div>
+</div>
+{% endblock %}

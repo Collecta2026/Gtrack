@@ -1,0 +1,141 @@
+{% extends "base.html" %}
+{% block heading %}{{ a.serial_no }}{% endblock %}
+{% block crumb %}{{ a.model_no or 'Unit' }} · {{ a.brand.brand_name if a.brand else '—' }}{% endblock %}
+
+{% block actions %}
+  <a class="btn ghost sm" href="{{ url_for('assets.index') }}">{{ t("Serial register") }}</a>
+{% endblock %}
+
+{% block content %}
+<div class="grid c2" style="align-items:start">
+
+  <div class="card">
+    <div class="card-head">
+      <h2>{{ t("Unit") }}</h2>
+      <span class="pill {{ 'green' if a.status == 'installed' else 'amber' if a.status == 'allocated' else 'navy' }}">{{ a.status_label }}</span>
+    </div>
+    <div class="card-body">
+      <dl class="kv">
+        <dt>Serial no</dt><dd><strong>{{ a.serial_no }}</strong></dd>
+        <dt>Model</dt><dd>{{ a.model_no or '—' }}</dd>
+        <dt>Brand</dt><dd>{{ a.brand.brand_name if a.brand else '—' }}</dd>
+        <dt>Item</dt><dd class="small">{{ a.item.description if a.item else '—' }}</dd>
+        {% if a.item and a.item.specification %}
+          <dt>Specification</dt><dd class="small">{{ a.item.specification }}</dd>
+        {% endif %}
+        {% if a.item and a.item.hs_code %}<dt>HS code</dt><dd>{{ a.item.hs_code }}</dd>{% endif %}
+        <dt>Warranty start</dt><dd>{{ a.warranty_start_date | shortdate }}</dd>
+        <dt>Warranty end</dt>
+        <dd>{{ a.warranty_end_date | shortdate }}
+          {% if a.warranty_start_date %}
+            {% if a.warranty_active %}<span class="pill green">{{ t("active") }}</span>
+            {% else %}<span class="pill grey">{{ t("expired") }}</span>{% endif %}
+          {% endif %}
+        </dd>
+        <dt>{{ t("Current location") }}</dt>
+        <dd>{{ a.current_location.name if a.current_location else '—' }}
+          {% if a.current_location and a.current_location.is_free_zone %}<span class="pill olive">{{ t("Free zone") }}</span>{% endif %}</dd>
+        {% if a.condition_notes %}<dt>Condition</dt><dd class="small">{{ a.condition_notes }}</dd>{% endif %}
+      </dl>
+
+      {% if current_user.can('edit_asset') %}
+      <form method="post" action="{{ url_for('assets.set_status', asset_id=a.id) }}" class="mt1">
+        <div class="grid c2">
+          <div class="field">
+            <label>{{ t("Status") }}</label>
+            <select name="status">
+              {% for code, label in statuses %}
+                <option value="{{ code }}" {{ 'selected' if a.status == code }}>{{ label }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="field">
+            <label>{{ t("Condition notes") }}</label>
+            <input type="text" name="condition_notes" value="{{ a.condition_notes or '' }}">
+          </div>
+        </div>
+        <div class="btn-row mt1"><button class="btn sm" type="submit">{{ t("Update unit") }}</button></div>
+      </form>
+      {% endif %}
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-head"><h2>{{ t("Journey") }}</h2></div>
+    <div class="card-body">
+      {% if a.movements %}
+      <ul class="journey">
+        {% for m in a.movements %}
+          <li>
+            <strong>{{ m.type_label }}</strong>
+            {% if m.from_location or m.to_location %}
+              — {{ m.from_location.name if m.from_location else '—' }} → {{ m.to_location.name if m.to_location else '—' }}
+            {% endif %}
+            <div class="when">
+              {{ m.movement_date | shortdate }}
+              {% if m.shipment %}
+                · <a href="{{ url_for('shipments.detail', shipment_id=m.shipment.id) }}">{{ m.shipment.reference_no }}</a>
+                <span class="muted">({{ m.shipment.route_label }})</span>
+              {% endif %}
+              {% if m.recorded_by %} · {{ m.recorded_by.name }}{% endif %}
+            </div>
+            {% if m.note %}<div class="tiny muted">{{ m.note }}</div>{% endif %}
+          </li>
+        {% endfor %}
+      </ul>
+      {% if a.shipments_travelled | length > 1 %}
+        <div class="tiny muted mt1">
+          {{ t("This unit has travelled on {n} shipment legs.", n=a.shipments_travelled|length) }}
+        </div>
+      {% endif %}
+      {% endif %}
+
+      <dl class="kv {{ 'mt1' if a.movements }}">
+        {% set s = a.shipment %}
+        {% if s %}
+          <dt>Shipment</dt>
+          <dd><a href="{{ url_for('shipments.detail', shipment_id=s.id) }}">{{ s.reference_no }}</a>
+            <span class="pill navy">{{ s.stage_label }}</span>
+            <span class="pill {{ 'olive' if s.is_hub_leg else 'grey' }}">{{ s.route_label }}</span></dd>
+          <dt>Purchase order</dt>
+          <dd>{% if s.po %}<a href="{{ url_for('purchase_orders.detail', po_id=s.po.id) }}">{{ s.po.po_number }}</a>{% else %}—{% endif %}</dd>
+          <dt>Supplier</dt><dd>{{ s.supplier.name if s.supplier else '—' }}</dd>
+          <dt>Route</dt><dd>{{ s.origin or '—' }} → {{ s.destination or '—' }}</dd>
+          <dt>Departed</dt><dd>{{ s.actual_departure | shortdate }}</dd>
+          <dt>Arrived</dt><dd>{{ s.actual_arrival | shortdate }}</dd>
+          <dt>Cleared</dt><dd>{{ s.clearance_date | shortdate }}</dd>
+          <dt>Warehouse</dt><dd>{{ s.warehouse_date | shortdate }}</dd>
+        {% endif %}
+        {% if a.allocation %}
+          <dt>Customer</dt><dd><strong>{{ a.allocation.customer.customer_name if a.allocation.customer else '—' }}</strong></dd>
+          <dt>Sales owner</dt>
+          <dd>{{ a.allocation.customer.sales_owner.name if a.allocation.customer and a.allocation.customer.sales_owner else '—' }}</dd>
+          <dt>Allocated</dt><dd>{{ a.allocation.allocated_date | shortdate }}
+            {% if a.allocation.allocated_by %}<span class="tiny muted">by {{ a.allocation.allocated_by.name }}</span>{% endif %}</dd>
+          <dt>Expected install</dt><dd>{{ a.allocation.expected_install_date | shortdate }}</dd>
+          <dt>Installed</dt>
+          <dd>{% if a.allocation.install_confirmed_date %}
+                <span class="pill green">{{ a.allocation.install_confirmed_date | shortdate }}</span>
+              {% else %}<span class="pill amber">{{ t("Pending") }}</span>{% endif %}</dd>
+          {% if a.allocation.sales_notes %}
+            <dt>Sales notes</dt><dd class="small">{{ a.allocation.sales_notes }}</dd>
+          {% endif %}
+        {% else %}
+          <dt>Customer</dt><dd><span class="muted">{{ t("Not yet allocated") }}</span></dd>
+        {% endif %}
+      </dl>
+
+      {% if a.allocation and not a.allocation.install_confirmed_date and current_user.can('edit_allocation') %}
+      <form method="post" action="{{ url_for('shipments.confirm_install', alloc_id=a.allocation.id) }}" class="inline-form mt1">
+        <div class="field">
+          <label>{{ t("Installation date") }}</label>
+          <input type="date" name="install_date" value="{{ today.isoformat() }}">
+        </div>
+        <button class="btn green sm" type="submit">{{ t("Confirm installation") }}</button>
+      </form>
+      {% endif %}
+    </div>
+  </div>
+
+</div>
+{% endblock %}

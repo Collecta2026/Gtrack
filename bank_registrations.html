@@ -1,0 +1,62 @@
+{% extends "base.html" %}
+{% block heading %}{{ t("Form 4 register") }}{% endblock %}
+{% block crumb %}{{ t("Bank-side import registration and exemptions") }}{% endblock %}
+
+{% block actions %}
+  <a class="btn ghost sm" href="{{ url_for('finance.bank_registrations', export='xlsx') }}">{{ t("Excel") }}</a>
+  <a class="btn ghost sm" href="{{ url_for('finance.bank_registrations', export='pdf') }}">{{ t("PDF") }}</a>
+{% endblock %}
+
+{% block content %}
+<div class="card">
+  <div class="card-head"><h2>{{ t("Registered & exempt") }}</h2><span class="tiny muted">{{ regs | length }} record(s)</span></div>
+  {% if regs %}
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>{{ t("Shipment") }}</th><th>{{ t("Bank") }}</th><th>{{ t("Registration no") }}</th><th>{{ t("Date") }}</th><th>{{ t("Status") }}</th><th>{{ t("Reason") }}</th></tr></thead>
+      <tbody>
+      {% for r in regs %}
+        <tr>
+          <td class="small">
+            {% if r.shipment %}<a href="{{ url_for('shipments.detail', shipment_id=r.shipment.id) }}">{{ r.shipment.reference_no }}</a>{% else %}—{% endif %}
+          </td>
+          <td class="small">{{ r.bank.bank_name if r.bank else '—' }}</td>
+          <td class="small">{{ r.registration_no or '—' }}</td>
+          <td class="small nowrap">{{ r.registration_date | shortdate }}</td>
+          <td>
+            {% if r.is_exempt %}<span class="pill grey">{{ t("Exempt") }}</span>
+            {% else %}<span class="pill green">{{ t("Registered") }}</span>{% endif %}
+          </td>
+          <td class="small muted">{{ r.exempt_reason or '—' }}</td>
+        </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}<div class="empty">{{ t("No Form 4 records yet.") }}</div>{% endif %}
+</div>
+
+<div class="card">
+  <div class="card-head">
+    <h2>{{ t("Open shipments with no Form 4 record") }}</h2>
+    <span class="pill {{ 'red' if shipments_missing else 'green' }}">{{ shipments_missing | length }}</span>
+  </div>
+  {% if shipments_missing %}
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>{{ t("Shipment") }}</th><th>{{ t("Stage") }}</th><th>{{ t("Supplier") }}</th><th>{{ t("ETA") }}</th></tr></thead>
+      <tbody>
+      {% for s in shipments_missing %}
+        <tr>
+          <td class="small"><a href="{{ url_for('shipments.detail', shipment_id=s.id) }}">{{ s.reference_no }}</a></td>
+          <td class="small">{{ s.stage_label }}</td>
+          <td class="small">{{ s.supplier.name if s.supplier else '—' }}</td>
+          <td class="small nowrap">{{ s.eta | shortdate }}</td>
+        </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}<div class="empty">{{ t("Every open shipment has a Form 4 record or a recorded exemption.") }}</div>{% endif %}
+</div>
+{% endblock %}

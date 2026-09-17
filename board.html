@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+{% block heading %}{{ t("Pipeline board") }}{% endblock %}
+{% block crumb %}{{ t("Open shipments by stage") }}{% endblock %}
+
+{% block actions %}
+  <a class="btn ghost sm" href="{{ url_for('shipments.index') }}">{{ t("List view") }}</a>
+{% endblock %}
+
+{% block content %}
+<div class="board">
+  {% for col in columns %}
+    <div class="col">
+      <div class="col-head">
+        <div class="t">{{ col.label }}</div>
+        <div class="m">{{ col.owner }} · {{ col.shipments | length }}</div>
+      </div>
+      <div class="col-body">
+        {% for s in col.shipments %}
+          <a class="mini" href="{{ url_for('shipments.detail', shipment_id=s.id) }}" style="display:block">
+            <div class="r">{{ s.reference_no }}
+              {% if s.is_delayed %}<span class="pill red" style="float:right">late</span>{% endif %}
+            </div>
+            <div class="d">{{ s.brand.brand_name if s.brand else '—' }}</div>
+            <div class="d">{{ s.origin or '—' }} → {{ s.destination or '—' }}</div>
+            <div class="d">
+              <span class="pill {{ 'olive' if s.is_hub_leg else 'grey' }}">{{ s.route_label }}</span>
+              {% if s.cut_off_missed %}<span class="pill red">{{ t("cut-off") }}</span>{% endif %}
+            </div>
+            <div class="d">
+              ETA {{ s.eta | shortdate }} · {{ s.days_in_stage }}d in stage
+            </div>
+            {% if s.allocated_customers %}
+              <div class="d" style="color:var(--amber)">
+                {{ s.allocated_customers | map(attribute='customer_name') | join(', ') | truncate(38) }}
+              </div>
+            {% endif %}
+          </a>
+        {% else %}
+          <div class="tiny muted" style="padding:.4rem">—</div>
+        {% endfor %}
+      </div>
+    </div>
+  {% endfor %}
+</div>
+{% endblock %}

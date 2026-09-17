@@ -1,0 +1,313 @@
+{% extends "base.html" %}
+{% block heading %}{{ t("Reports & KPIs") }}{% endblock %}
+{% block crumb %}{{ stats.total }} shipments in scope · {{ stats.open }} open{% endblock %}
+
+{% block actions %}
+  <a class="btn ghost sm" href="{{ url_for('reports.export', format='xlsx') }}">{{ t("Full register (Excel)") }}</a>
+  <a class="btn ghost sm" href="{{ url_for('reports.export', format='csv') }}">{{ t("CSV") }}</a>
+  <a class="btn ghost sm" href="{{ url_for('reports.export', format='pdf') }}">{{ t("PDF") }}</a>
+{% endblock %}
+
+{% block content %}
+
+<div class="tiles">
+  <div class="tile">
+    <div class="lab">{{ t("Avg transit time") }}</div>
+    <div class="val">{{ stats.avg_transit if stats.avg_transit is not none else '—' }}</div>
+    <div class="sub">{{ t("days, departure to arrival") }}</div>
+  </div>
+  <div class="tile">
+    <div class="lab">{{ t("Avg clearance") }}</div>
+    <div class="val">{{ stats.avg_clearance if stats.avg_clearance is not none else '—' }}</div>
+    <div class="sub">{{ t("days, arrival to cleared") }}</div>
+  </div>
+  <div class="tile {{ 'good' if stats.on_time_pct and stats.on_time_pct >= 80 else 'warn' }}">
+    <div class="lab">{{ t("On time vs ETA") }}</div>
+    <div class="val">{{ (stats.on_time_pct ~ '%') if stats.on_time_pct is not none else '—' }}</div>
+    <div class="sub">of {{ stats.arrived_count }} arrivals</div>
+  </div>
+  <div class="tile">
+    <div class="lab">{{ t("Cost per shipment") }}</div>
+    <div class="val">{{ stats.cost_per_shipment | money }}</div>
+    <div class="sub">{{ base_currency }} average</div>
+  </div>
+  <div class="tile">
+    <div class="lab">{{ t("Cost per kg") }}</div>
+    <div class="val">{{ stats.cost_per_kg | money2 if stats.cost_per_kg else '—' }}</div>
+    <div class="sub">{{ base_currency }}</div>
+  </div>
+  <div class="tile {{ 'warn' if stats.delayed }}">
+    <div class="lab">{{ t("Delayed now") }}</div>
+    <div class="val">{{ stats.delayed }}</div>
+    <div class="sub">{{ t("past ETA") }}</div>
+  </div>
+  <div class="tile {{ 'warn' if stats.incomplete_docs }}">
+    <div class="lab">{{ t("Docs incomplete") }}</div>
+    <div class="val">{{ stats.incomplete_docs }}</div>
+    <div class="sub">{{ t("open shipments") }}</div>
+  </div>
+  <div class="tile">
+    <div class="lab">{{ t("Total logged cost") }}</div>
+    <div class="val">{{ stats.total_cost | money }}</div>
+    <div class="sub">{{ base_currency }}</div>
+  </div>
+</div>
+
+<div class="grid c2" style="align-items:start">
+
+  <div class="card">
+    <div class="card-head"><h2>{{ t("Open pipeline") }}</h2></div>
+    <div class="card-body">
+      {% set maxc = pipeline | map(attribute='count') | max %}
+      {% for row in pipeline %}
+        <div class="bar-row">
+          <div class="bl">{{ row.label }}</div>
+          <div class="bar-track"><div class="bar-fill" style="width:{{ (row.count / maxc * 100) if maxc else 0 }}%"></div></div>
+          <div class="bv">{{ row.count }}</div>
+        </div>
+      {% else %}<div class="empty">{{ t("Nothing open.") }}</div>{% endfor %}
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-head"><h2>{{ t("Cost by category") }}</h2></div>
+    <div class="card-body">
+      {% set maxv = cost_rows | map(attribute=1) | max %}
+      {% for label, value in cost_rows %}
+        <div class="bar-row">
+          <div class="bl">{{ label }}</div>
+          <div class="bar-track"><div class="bar-fill" style="width:{{ (value / maxv * 100) if maxv else 0 }}%"></div></div>
+          <div class="bv">{{ value | money }}</div>
+        </div>
+      {% else %}<div class="empty">{{ t("No costs recorded.") }}</div>{% endfor %}
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-head"><h2>{{ t("Transit time by mode") }}</h2></div>
+    {% if mode_stats %}
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>{{ t("Mode") }}</th><th class="num">{{ t("Avg days") }}</th><th class="num">{{ t("Shipments") }}</th></tr></thead>
+        <tbody>
+        {% for m in mode_stats %}
+          <tr><td class="small">{{ m.mode }}</td><td class="num">{{ m.avg }}</td><td class="num">{{ m.count }}</td></tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}<div class="empty">{{ t("Not enough completed journeys yet.") }}</div>{% endif %}
+  </div>
+
+  <div class="card">
+    <div class="card-head"><h2>{{ t("Busiest lanes") }}</h2></div>
+    {% if lane_stats %}
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>{{ t("Lane") }}</th><th class="num">{{ t("Avg days") }}</th><th class="num">{{ t("Shipments") }}</th></tr></thead>
+        <tbody>
+        {% for l in lane_stats %}
+          <tr><td class="small">{{ l.lane }}</td><td class="num">{{ l.avg }}</td><td class="num">{{ l.count }}</td></tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}<div class="empty">{{ t("No lane data yet.") }}</div>{% endif %}
+  </div>
+
+  <div class="card" style="grid-column:1 / -1">
+    <div class="card-head">
+      <h2>{{ t("Direct versus the fulfilment centre route") }}</h2>
+      <span class="tiny muted">
+        {{ stats.hub_legs }} {{ t("hub legs") }}
+        {% if stats.consolidated %} · {{ stats.consolidated }} {{ t("consolidated shipments") }}{% endif %}
+      </span>
+    </div>
+    {% if route_stats %}
+    <div class="table-wrap">
+      <table>
+        <thead><tr>
+          <th>{{ t("Route type") }}</th><th class="num">{{ t("Shipments") }}</th>
+          <th class="num">{{ t("Goods value") }}</th><th class="num">{{ t("Costs") }}</th>
+          <th class="num">{{ t("Costs as % of goods") }}</th><th class="num">{{ t("Cost per kg") }}</th>
+          <th class="num">{{ t("Avg transit") }}</th><th class="num">{{ t("Avg clearance") }}</th>
+        </tr></thead>
+        <tbody>
+        {% for r in route_stats %}
+          <tr>
+            <td class="small"><strong>{{ r.label }}</strong></td>
+            <td class="num">{{ r.count }}</td>
+            <td class="num small">{{ r.value | money }}</td>
+            <td class="num small">{{ r.cost | money }}</td>
+            <td class="num small">{% if r.cost_pct is not none %}{{ '%.1f' | format(r.cost_pct) }}%{% else %}—{% endif %}</td>
+            <td class="num small">{% if r.cost_per_kg is not none %}{{ r.cost_per_kg | money2 }}{% else %}—{% endif %}</td>
+            <td class="num small">{{ (r.avg_transit ~ 'd') if r.avg_transit is not none else '—' }}</td>
+            <td class="num small">{{ (r.avg_clearance ~ 'd') if r.avg_clearance is not none else '—' }}</td>
+          </tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    <div class="card-body tight">
+      <div class="tiny muted">
+        {{ t("The two-step route through the free zone buys flexibility but pays freight, handling and clearance twice. Comparing cost as a share of goods value, and cost per kilogram, is what shows whether it is earning its keep.") }}
+      </div>
+    </div>
+    {% else %}<div class="empty">{{ t("No routing data yet.") }}</div>{% endif %}
+  </div>
+
+  <div class="card">
+    <div class="card-head"><h2>{{ t("By brand") }}</h2></div>
+    {% if brand_stats %}
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>{{ t("Brand") }}</th><th class="num">{{ t("Shipments") }}</th><th class="num">{{ t("Goods value") }}</th>
+          <th class="num">{{ t("Cost") }} ({{ base_currency }})</th><th class="num">{{ t("Avg transit") }}</th></tr></thead>
+        <tbody>
+        {% for b in brand_stats[:12] %}
+          <tr>
+            <td class="small">{{ b.brand }}</td>
+            <td class="num">{{ b.shipments }}</td>
+            <td class="num small">{{ b.value | money }}</td>
+            <td class="num small">{{ b.cost | money }}</td>
+            <td class="num small">{{ b.avg_transit if b.avg_transit is not none else '—' }}</td>
+          </tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}<div class="empty">{{ t("No brand data.") }}</div>{% endif %}
+  </div>
+
+  <div class="card">
+    <div class="card-head"><h2>{{ t("Supplier performance") }}</h2></div>
+    {% if supplier_stats %}
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>{{ t("Supplier") }}</th><th class="num">{{ t("Shipments") }}</th><th class="num">{{ t("Delayed") }}</th>
+          <th class="num">{{ t("Avg transit") }}</th><th class="num">{{ t("Lead time") }}</th></tr></thead>
+        <tbody>
+        {% for s in supplier_stats %}
+          <tr>
+            <td class="small">{{ s.supplier | truncate(32) }}</td>
+            <td class="num">{{ s.shipments }}</td>
+            <td class="num">{% if s.delayed %}<span class="pill red">{{ s.delayed }}</span>{% else %}—{% endif %}</td>
+            <td class="num small">{{ s.avg_transit if s.avg_transit is not none else '—' }}</td>
+            <td class="num small">{{ s.lead_time ~ 'd' if s.lead_time else '—' }}</td>
+          </tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}<div class="empty">{{ t("No supplier data.") }}</div>{% endif %}
+  </div>
+
+  <div class="card">
+    <div class="card-head"><h2>{{ t("Equipment by status") }}</h2></div>
+    <div class="card-body">
+      {% set maxa = asset_status_counts.values() | max %}
+      {% for label, count in asset_status_counts.items() %}
+        <div class="bar-row">
+          <div class="bl">{{ label }}</div>
+          <div class="bar-track"><div class="bar-fill" style="width:{{ (count / maxa * 100) if maxa else 0 }}%"></div></div>
+          <div class="bv">{{ count }}</div>
+        </div>
+      {% else %}<div class="empty">{{ t("No serialised units.") }}</div>{% endfor %}
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-head"><h2>{{ t("Value in transit by currency") }}</h2></div>
+    <div class="card-body">
+      {% for code, value in value_by_currency.items() %}
+        <div class="bar-row">
+          <div class="bl">{{ code }}</div>
+          <div class="bar-track"><div class="bar-fill" style="width:100%"></div></div>
+          <div class="bv">{{ value | money }}</div>
+        </div>
+      {% else %}<div class="empty">{{ t("Nothing in transit.") }}</div>{% endfor %}
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-head"><h2>{{ t("Ageing — longest in stage") }}</h2></div>
+    {% if ageing %}
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>{{ t("Shipment") }}</th><th>{{ t("Stage") }}</th><th>{{ t("Owner") }}</th><th class="num">{{ t("Days") }}</th></tr></thead>
+        <tbody>
+        {% for s in ageing %}
+          <tr>
+            <td class="small"><a href="{{ url_for('shipments.detail', shipment_id=s.id) }}">{{ s.reference_no }}</a></td>
+            <td class="small">{{ s.stage_label }}</td>
+            <td class="small muted">{{ s.stage_owner }}</td>
+            <td class="num"><span class="pill {{ 'red' if s.days_in_stage > 30 else 'amber' }}">{{ s.days_in_stage }}</span></td>
+          </tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}<div class="empty">{{ t("Nothing ageing.") }}</div>{% endif %}
+  </div>
+
+  <div class="card">
+    <div class="card-head"><h2>{{ t("Document gaps") }}</h2></div>
+    {% if incomplete %}
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>{{ t("Shipment") }}</th><th>{{ t("Stage") }}</th><th>{{ t("Missing") }}</th><th class="num">{{ t("Complete") }}</th></tr></thead>
+        <tbody>
+        {% for s in incomplete %}
+          <tr>
+            <td class="small"><a href="{{ url_for('shipments.detail', shipment_id=s.id) }}">{{ s.reference_no }}</a></td>
+            <td class="small">{{ s.stage_label }}</td>
+            <td class="small muted">{{ s.missing_documents | join(', ') | replace('_', ' ') }}</td>
+            <td class="num"><span class="pill amber">{{ s.doc_completeness }}%</span></td>
+          </tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}<div class="empty">{{ t("Every open shipment has its required documents.") }}</div>{% endif %}
+  </div>
+
+  <div class="card" style="grid-column:1 / -1">
+    <div class="card-head">
+      <h2>{{ t("Date anomalies") }}</h2>
+      <span class="tiny muted">{{ t("dates that cannot both be true — excluded from the timing averages") }}</span>
+    </div>
+    {% if anomalies %}
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>{{ t("Shipment") }}</th><th>{{ t("Problem") }}</th>
+          <th>{{ t("ETD") }}</th><th>{{ t("ETA") }}</th>
+          <th>{{ t("Actual departure") }}</th><th>{{ t("Actual arrival") }}</th>
+          <th>{{ t("Cleared") }}</th><th>{{ t("Warehouse") }}</th></tr></thead>
+        <tbody>
+        {% for row in anomalies %}
+          <tr>
+            <td class="small"><a href="{{ url_for('shipments.detail', shipment_id=row.shipment.id) }}"><strong>{{ row.shipment.reference_no }}</strong></a></td>
+            <td class="small">
+              {% for p in row.problems %}<div class="tiny"><span class="pill amber">{{ p }}</span></div>{% endfor %}
+            </td>
+            <td class="small nowrap">{{ row.shipment.etd | shortdate }}</td>
+            <td class="small nowrap">{{ row.shipment.eta | shortdate }}</td>
+            <td class="small nowrap">{{ row.shipment.actual_departure | shortdate }}</td>
+            <td class="small nowrap">{{ row.shipment.actual_arrival | shortdate }}</td>
+            <td class="small nowrap">{{ row.shipment.clearance_date | shortdate }}</td>
+            <td class="small nowrap">{{ row.shipment.warehouse_date | shortdate }}</td>
+          </tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    <div class="card-body tight">
+      <div class="tiny muted">
+        {{ t("These rows came across from the spreadsheet with contradictory dates. Their transit and clearance times are treated as unknown rather than counted as negative, so the averages above stay honest. Correcting the dates on the shipment removes it from this list.") }}
+      </div>
+    </div>
+    {% else %}<div class="empty">{{ t("No contradictory dates recorded.") }}</div>{% endif %}
+  </div>
+
+</div>
+{% endblock %}

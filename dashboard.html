@@ -1,0 +1,233 @@
+{% extends "base.html" %}
+{% block heading %}{{ t("Dashboard") }}{% endblock %}
+{% block crumb %}{{ current_user.role.name_label if current_user.role }} · {{ today | shortdate }}{% endblock %}
+
+{% block actions %}
+  <form method="post" action="{{ url_for('dashboard.run_notifications') }}">
+    <button class="btn ghost sm" type="submit">{{ t("Run notification sweep") }}</button>
+  </form>
+  {% if current_user.can('edit_shipment') %}
+    <a class="btn sm" href="{{ url_for('shipments.create') }}">{{ t("New shipment") }}</a>
+  {% endif %}
+{% endblock %}
+
+{% block content %}
+
+<div class="tiles">
+  <div class="tile">
+    <div class="lab">{{ t("Open shipments") }}</div>
+    <div class="val">{{ stats.open_shipments }}</div>
+    <div class="sub">{{ t("in the pipeline now") }}</div>
+  </div>
+  <div class="tile {{ 'warn' if stats.delayed }}">
+    <div class="lab">{{ t("Delayed") }}</div>
+    <div class="val">{{ stats.delayed }}</div>
+    <div class="sub">{{ t("past ETA, not arrived") }}</div>
+  </div>
+  <div class="tile amber">
+    <div class="lab">{{ t("Arriving ≤ 21 days") }}</div>
+    <div class="val">{{ stats.arriving_soon }}</div>
+    <div class="sub">{{ t("prepare customers") }}</div>
+  </div>
+  <div class="tile">
+    <div class="lab">{{ t("Machines unallocated") }}</div>
+    <div class="val">{{ stats.unallocated_units }}</div>
+    <div class="sub">{{ t("no customer assigned") }}</div>
+  </div>
+  <div class="tile">
+    <div class="lab">{{ t("Awaiting installation") }}</div>
+    <div class="val">{{ stats.awaiting_install }}</div>
+    <div class="sub">{{ t("allocated, not installed") }}</div>
+  </div>
+  {% if current_user.can('view_all') %}
+  <div class="tile">
+    <div class="lab">{{ t("Goods in transit") }}</div>
+    <div class="val">{{ stats.value_in_transit | money }}</div>
+    <div class="sub">{{ t("declared value, {cur}", cur=base_currency) }}</div>
+  </div>
+  <div class="tile {{ 'warn' if stats.unpaid_costs }}">
+    <div class="lab">{{ t("Unpaid costs") }}</div>
+    <div class="val">{{ stats.unpaid_costs | money }}</div>
+    <div class="sub">{{ t("{cur} equivalent", cur=base_currency) }}</div>
+  </div>
+  <div class="tile {{ 'warn' if stats.overdue_pos }}">
+    <div class="lab">{{ t("Open POs") }}</div>
+    <div class="val">{{ stats.open_pos }}</div>
+    <div class="sub">{{ t("{n} past ready date", n=stats.overdue_pos) }}</div>
+  </div>
+  {% if stats.hub_lines %}
+  <a class="tile" href="{{ url_for('assets.hub_stock') }}" style="display:block;color:inherit;text-decoration:none">
+    <div class="lab">{{ t("Held at the fulfilment centre") }}</div>
+    <div class="val">{{ stats.hub_value | money }}</div>
+    <div class="sub">
+      {{ stats.hub_lines }} {{ t("line(s)") }}
+      {% if stats.hub_days %} · {{ t("oldest {n} days", n=stats.hub_days) }}{% endif %}
+    </div>
+  </a>
+  {% endif %}
+  {% if stats.cut_off_risk %}
+  <div class="tile warn">
+    <div class="lab">{{ t("Cut-off missed") }}</div>
+    <div class="val">{{ stats.cut_off_risk }}</div>
+    <div class="sub">{{ t("not departed past the cargo cut-off") }}</div>
+  </div>
+  {% endif %}
+  {% endif %}
+</div>
+
+{% if cut_off_risk %}
+<div class="card">
+  <div class="card-head">
+    <h2>{{ t("Past the cargo cut-off") }}</h2>
+    <span class="tiny muted">{{ t("cut-off passed and still not departed") }}</span>
+  </div>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>{{ t("Reference") }}</th><th>{{ t("Route") }}</th><th>{{ t("Forwarder") }}</th>
+        <th>{{ t("Cut-off date") }}</th><th>{{ t("Stage") }}</th></tr></thead>
+      <tbody>
+      {% for s in cut_off_risk %}
+        <tr>
+          <td class="small"><a href="{{ url_for('shipments.detail', shipment_id=s.id) }}"><strong>{{ s.reference_no }}</strong></a></td>
+          <td class="small nowrap">{{ s.origin or '—' }} → {{ s.destination or '—' }}</td>
+          <td class="small">{{ s.forwarder.name if s.forwarder else '—' }}</td>
+          <td class="small nowrap">{{ s.cut_off_date | shortdate }}</td>
+          <td class="small"><span class="pill navy">{{ s.stage_label }}</span></td>
+        </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endif %}
+
+<div class="grid c2" style="align-items:start">
+
+  <div class="card">
+    <div class="card-head">
+      <h2>{{ t("Pipeline") }}</h2>
+      <a class="small" href="{{ url_for('shipments.board') }}">Open board →</a>
+    </div>
+    <div class="card-body">
+      {% set maxc = pipeline | map(attribute='count') | max %}
+      {% for row in pipeline %}
+        <div class="bar-row">
+          <div class="bl" title="{{ row.label }} · {{ row.owner }}">{{ row.label }}</div>
+          <div class="bar-track">
+            <div class="bar-fill" style="width:{{ (row.count / maxc * 100) if maxc else 0 }}%"></div>
+          </div>
+          <div class="bv">{{ row.count }}</div>
+        </div>
+      {% endfor %}
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-head"><h2>{{ t("Arriving soon") }}</h2></div>
+    {% if arriving_soon %}
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>{{ t("Shipment") }}</th><th>{{ t("Brand") }}</th><th>{{ t("ETA") }}</th><th>{{ t("Customers") }}</th></tr></thead>
+        <tbody>
+        {% for s in arriving_soon %}
+          <tr>
+            <td><a href="{{ url_for('shipments.detail', shipment_id=s.id) }}">{{ s.reference_no }}</a></td>
+            <td>{{ s.brand.brand_name if s.brand else '—' }}</td>
+            <td class="nowrap">{{ s.eta | shortdate }}</td>
+            <td class="small">
+              {% if s.allocated_customers %}
+                {{ s.allocated_customers | map(attribute='customer_name') | join(', ') }}
+              {% else %}<span class="muted">{{ t("none allocated") }}</span>{% endif %}
+            </td>
+          </tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}<div class="empty">{{ t("Nothing arriving in the next three weeks.") }}</div>{% endif %}
+  </div>
+
+  <div class="card">
+    <div class="card-head"><h2>{{ t("Delayed shipments") }}</h2></div>
+    {% if delayed %}
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>{{ t("Shipment") }}</th><th>{{ t("Stage") }}</th><th>{{ t("ETA") }}</th><th class="num">{{ t("Days late") }}</th></tr></thead>
+        <tbody>
+        {% for s in delayed %}
+          <tr>
+            <td><a href="{{ url_for('shipments.detail', shipment_id=s.id) }}">{{ s.reference_no }}</a></td>
+            <td class="small">{{ s.stage_label }}</td>
+            <td class="nowrap">{{ s.eta | shortdate }}</td>
+            <td class="num"><span class="pill red">{{ (today - s.eta).days }}</span></td>
+          </tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}<div class="empty">{{ t("No shipments are running past their ETA.") }}</div>{% endif %}
+  </div>
+
+  <div class="card">
+    <div class="card-head"><h2>{{ t("Stuck in stage") }}</h2><span class="tiny muted">{{ t("over 14 days") }}</span></div>
+    {% if ageing %}
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>{{ t("Shipment") }}</th><th>{{ t("Stage") }}</th><th>{{ t("Owner") }}</th><th class="num">{{ t("Days") }}</th></tr></thead>
+        <tbody>
+        {% for s in ageing %}
+          <tr>
+            <td><a href="{{ url_for('shipments.detail', shipment_id=s.id) }}">{{ s.reference_no }}</a></td>
+            <td class="small">{{ s.stage_label }}</td>
+            <td class="small muted">{{ s.stage_owner }}</td>
+            <td class="num"><span class="pill {{ 'red' if s.days_in_stage > 30 else 'amber' }}">{{ s.days_in_stage }}</span></td>
+          </tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}<div class="empty">{{ t("Nothing has been sitting in one stage too long.") }}</div>{% endif %}
+  </div>
+
+  {% if overdue_pos %}
+  <div class="card">
+    <div class="card-head"><h2>{{ t("Overdue purchase orders") }}</h2></div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>{{ t("PO") }}</th><th>{{ t("Supplier") }}</th><th>{{ t("Expected ready") }}</th></tr></thead>
+        <tbody>
+        {% for p in overdue_pos %}
+          <tr>
+            <td><a href="{{ url_for('purchase_orders.detail', po_id=p.id) }}">{{ p.po_number }}</a></td>
+            <td class="small">{{ p.supplier.name if p.supplier else '—' }}</td>
+            <td class="nowrap"><span class="pill red">{{ p.expected_ready_date | shortdate }}</span></td>
+          </tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+  {% endif %}
+
+  <div class="card">
+    <div class="card-head">
+      <h2>{{ t("Recent alerts") }}</h2>
+      <a class="small" href="{{ url_for('admin.notifications') }}">All notifications →</a>
+    </div>
+    {% if recent_alerts %}
+    <div class="card-body tight">
+      {% for n in recent_alerts %}
+        <div style="padding:.45rem 0;border-bottom:1px solid var(--line-soft)">
+          <div class="small"><strong>{{ n.subject }}</strong></div>
+          <div class="tiny muted">{{ n.body[:130] }}{% if n.body|length > 130 %}…{% endif %}</div>
+          <div class="tiny muted" style="margin-top:.15rem">
+            to {{ n.recipient_email }} · {{ n.sent_at | datetimefmt }}
+          </div>
+        </div>
+      {% endfor %}
+    </div>
+    {% else %}<div class="empty">{{ t("No alerts yet — run a notification sweep.") }}</div>{% endif %}
+  </div>
+
+</div>
+{% endblock %}

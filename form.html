@@ -1,0 +1,227 @@
+{% extends "base.html" %}
+{% block heading %}{{ 'Edit ' ~ s.reference_no if s else 'New shipment' }}{% endblock %}
+{% block crumb %}{{ 'Update shipment details' if s else 'Create a shipment record' }}{% endblock %}
+
+{% block content %}
+<form method="post">
+  <div class="card">
+    <div class="card-head"><h2>{{ t("Parties & route") }}</h2></div>
+    <div class="card-body">
+      <div class="grid c3">
+        {% if not s %}
+        <div class="field">
+          <label>{{ t("Reference") }}</label>
+          <input type="text" name="reference_no" placeholder="Auto-generated if blank">
+        </div>
+        {% endif %}
+        <div class="field">
+          <label>{{ t("Direction") }}</label>
+          <select name="direction">
+            {% for d in ['Import', 'Export', 'Import Then Export'] %}
+              <option {{ 'selected' if s and s.direction == d }}>{{ d }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="field">
+          <label>{{ t("Purchase order") }}</label>
+          <select name="po_id">
+            <option value="">—</option>
+            {% for p in pos %}
+              <option value="{{ p.id }}" {{ 'selected' if s and s.po_id == p.id }}>{{ p.po_number }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="field">
+          <label>{{ t("Supplier") }}</label>
+          <select name="supplier_id">
+            <option value="">—</option>
+            {% for x in suppliers %}
+              <option value="{{ x.id }}" {{ 'selected' if s and s.supplier_id == x.id }}>{{ x.name }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="field">
+          <label>{{ t("Exporter / shipper") }}</label>
+          <select name="exporter_id">
+            <option value="">—</option>
+            {% for x in suppliers %}
+              <option value="{{ x.id }}" {{ 'selected' if s and s.exporter_id == x.id }}>{{ x.name }}{{ ' ' ~ t("(internal)") if x.is_internal }}</option>
+            {% endfor %}
+          </select>
+          <small class="hint">{{ t("Who ships the goods — may differ from the manufacturer.") }}</small>
+        </div>
+        <div class="field">
+          <label>{{ t("Brand") }}</label>
+          <select name="brand_id">
+            <option value="">—</option>
+            {% for x in brands %}
+              <option value="{{ x.id }}" {{ 'selected' if s and s.brand_id == x.id }}>{{ x.brand_name }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="field">
+          <label>{{ t("Consignee") }}</label>
+          <select name="consignee_id">
+            <option value="">—</option>
+            {% for x in consignees %}
+              <option value="{{ x.id }}" {{ 'selected' if s and s.consignee_id == x.id }}>{{ x.name }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="field">
+          <label>{{ t("Route type") }}</label>
+          <select name="route_type">
+            {% for code, label in route_types %}
+              <option value="{{ code }}" {{ 'selected' if s and s.route_type == code }}>{{ t(label) }}</option>
+            {% endfor %}
+          </select>
+          <small class="hint">{{ t("Direct to Cairo, or via the Jebel Ali fulfilment centre.") }}</small>
+        </div>
+        <div class="field">
+          <label>{{ t("From location") }}</label>
+          <select name="from_location_id">
+            <option value="">—</option>
+            {% for x in locations %}
+              <option value="{{ x.id }}" {{ 'selected' if s and s.from_location_id == x.id }}>{{ x.name }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="field">
+          <label>{{ t("To location") }}</label>
+          <select name="to_location_id">
+            <option value="">—</option>
+            {% for x in locations %}
+              <option value="{{ x.id }}" {{ 'selected' if s and s.to_location_id == x.id }}>{{ x.name }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="field"><label>{{ t("Origin") }}</label><input type="text" name="origin" value="{{ s.origin or '' if s }}"></div>
+        <div class="field"><label>{{ t("Destination") }}</label><input type="text" name="destination" value="{{ s.destination or '' if s }}"></div>
+        <div class="field">
+          <label>{{ t("Customs broker") }}</label>
+          <select name="customs_broker_id">
+            <option value="">—</option>
+            {% for x in brokers %}
+              <option value="{{ x.id }}" {{ 'selected' if s and s.customs_broker_id == x.id }}>{{ x.name }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="field"><label>{{ t("Pickup address") }}</label>
+          <input type="text" name="pickup_address" value="{{ s.pickup_address or '' if s }}"></div>
+        <div class="field">
+          <label>{{ t("Mode") }}</label>
+          <select name="mode">
+            <option value="">—</option>
+            {% for code, label in modes %}
+              <option value="{{ code }}" {{ 'selected' if s and s.mode == code }}>{{ label }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="field">
+          <label>{{ t("Service type") }}</label>
+          <select name="service_type">
+            <option value="">—</option>
+            {% for code, label in service_types %}
+              <option value="{{ code }}" {{ 'selected' if s and s.service_type == code }}>{{ label }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="field">
+          <label>{{ t("Forwarder") }}</label>
+          <select name="forwarder_id">
+            <option value="">—</option>
+            {% for x in carriers %}
+              <option value="{{ x.id }}" {{ 'selected' if s and s.forwarder_id == x.id }}>{{ x.name }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="field">
+          <label>{{ t("Express carrier") }}</label>
+          <select name="express_carrier_id">
+            <option value="">—</option>
+            {% for x in carriers %}
+              <option value="{{ x.id }}" {{ 'selected' if s and s.express_carrier_id == x.id }}>{{ x.name }}</option>
+            {% endfor %}
+          </select>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-head"><h2>{{ t("References, dates & stage") }}</h2></div>
+    <div class="card-body">
+      <div class="grid c4">
+        <div class="field"><label>{{ t("ACID number") }}</label><input type="text" name="acid_number" value="{{ s.acid_number or '' if s }}"></div>
+        <div class="field"><label>{{ t("BL / AWB") }}</label><input type="text" name="bl_awb_no" value="{{ s.bl_awb_no or '' if s }}"></div>
+        <div class="field"><label>{{ t("Incoterm") }}</label><input type="text" name="incoterm" value="{{ s.incoterm or '' if s }}"></div>
+        <div class="field">
+          <label>{{ t("Document type") }}</label>
+          <select name="bl_type">
+            <option value="">—</option>
+            {% for code, label in bl_types %}
+              <option value="{{ code }}" {{ 'selected' if s and s.bl_type == code }}>{{ t(label) }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="field">
+          <label>{{ t("Payment terms") }}</label>
+          <select name="payment_terms">
+            <option value="">—</option>
+            {% for code, label in payment_terms %}
+              <option value="{{ code }}" {{ 'selected' if s and s.payment_terms == code }}>{{ t(label) }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="field"><label>{{ t("Gross weight (kg)") }}</label>
+          <input type="number" step="any" name="gross_weight_kg" value="{{ s.gross_weight_kg or '' if s }}"></div>
+        <div class="field"><label>{{ t("Chargeable weight (kg)") }}</label>
+          <input type="number" step="any" name="chargeable_weight_kg" value="{{ s.chargeable_weight_kg or '' if s }}"></div>
+        <div class="field"><label>{{ t("Measurement (CBM)") }}</label>
+          <input type="number" step="any" name="measurement_cbm" value="{{ s.measurement_cbm or '' if s }}"></div>
+        <div class="field"><label>{{ t("Cut-off date") }}</label>
+          <input type="date" name="cut_off_date" value="{{ s.cut_off_date.isoformat() if s and s.cut_off_date else '' }}"></div>
+        <div class="field"><label>{{ t("ETD") }}</label>
+          <input type="date" name="etd" value="{{ s.etd.isoformat() if s and s.etd else '' }}"></div>
+        <div class="field"><label>{{ t("ETA") }}</label>
+          <input type="date" name="eta" value="{{ s.eta.isoformat() if s and s.eta else '' }}"></div>
+        {% if s %}
+        <div class="field"><label>{{ t("Actual departure") }}</label>
+          <input type="date" name="actual_departure" value="{{ s.actual_departure.isoformat() if s.actual_departure else '' }}"></div>
+        <div class="field"><label>{{ t("Actual arrival") }}</label>
+          <input type="date" name="actual_arrival" value="{{ s.actual_arrival.isoformat() if s.actual_arrival else '' }}"></div>
+        <div class="field"><label>{{ t("Clearance date") }}</label>
+          <input type="date" name="clearance_date" value="{{ s.clearance_date.isoformat() if s.clearance_date else '' }}"></div>
+        {% else %}
+        <div class="field">
+          <label>{{ t("Starting stage") }}</label>
+          <select name="current_stage">
+            {% for code, label in stages %}<option value="{{ code }}">{{ label }}</option>{% endfor %}
+          </select>
+        </div>
+        {% endif %}
+      </div>
+      <div class="field" style="margin-top:.6rem">
+        <label>{{ t("Description") }}</label>
+        <input type="text" name="description" value="{{ s.description or '' if s }}">
+      </div>
+      <div class="field" style="margin-top:.6rem">
+        <label>{{ t("Customs note") }}</label>
+        <input type="text" name="customs_note" value="{{ s.customs_note or '' if s }}"
+               placeholder="{{ t('e.g. under USD 2,000 exemption, temporary admission') }}">
+      </div>
+      {% if s %}
+      <div class="field" style="margin-top:.6rem">
+        <label>{{ t("Remarks") }}</label>
+        <textarea name="remarks" rows="2">{{ s.remarks or '' }}</textarea>
+      </div>
+      {% endif %}
+    </div>
+  </div>
+
+  <div class="btn-row">
+    <button class="btn" type="submit">{{ 'Save changes' if s else 'Create shipment' }}</button>
+    <a class="btn ghost" href="{{ url_for('shipments.detail', shipment_id=s.id) if s else url_for('shipments.index') }}">{{ t("Cancel") }}</a>
+  </div>
+</form>
+{% endblock %}

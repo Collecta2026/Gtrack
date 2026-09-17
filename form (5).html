@@ -1,0 +1,76 @@
+{% extends "base.html" %}
+{% block heading %}{{ 'Edit ' ~ po.po_number if po else 'New purchase order' }}{% endblock %}
+{% block crumb %}{{ t("Raised on a supplier — the start of the shipment chain") }}{% endblock %}
+
+{% block content %}
+<form method="post">
+  <div class="card">
+    <div class="card-body">
+      <div class="grid c3">
+        {% if not po %}
+        <div class="field">
+          <label>{{ t("PO number") }}</label>
+          <input type="text" name="po_number" placeholder="Auto-generated if blank">
+        </div>
+        {% endif %}
+        <div class="field">
+          <label>{{ t("Supplier") }}</label>
+          <select name="supplier_id" required>
+            <option value="">Select…</option>
+            {% for s in suppliers %}
+              <option value="{{ s.id }}" {{ 'selected' if po and po.supplier_id == s.id }}>{{ s.name }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="field">
+          <label>{{ t("Brand") }}</label>
+          <select name="brand_id">
+            <option value="">—</option>
+            {% for b in brands %}
+              <option value="{{ b.id }}" {{ 'selected' if po and po.brand_id == b.id }}>{{ b.brand_name }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="field">
+          <label>{{ t("Order date") }}</label>
+          <input type="date" name="order_date" value="{{ po.order_date.isoformat() if po and po.order_date else today.isoformat() }}">
+        </div>
+        <div class="field">
+          <label>{{ t("Expected ready") }}</label>
+          <input type="date" name="expected_ready_date"
+                 value="{{ po.expected_ready_date.isoformat() if po and po.expected_ready_date else '' }}">
+        </div>
+        <div class="field">
+          <label>{{ t("Status") }}</label>
+          <select name="status">
+            {% for code, label in statuses %}
+              <option value="{{ code }}" {{ 'selected' if po and po.status == code }}>{{ label }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="field">
+          <label>{{ t("Currency") }}</label>
+          <select name="currency">
+            {% for c in currencies %}
+              <option {{ 'selected' if (po and po.currency == c) or (not po and c == 'USD') }}>{{ c }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="field">
+          <label>{{ t("Incoterm") }}</label>
+          <input type="text" name="incoterm" value="{{ po.incoterm or '' if po }}" placeholder="FOB, CIF, EXW…">
+        </div>
+      </div>
+      <div class="field" style="margin-top:.6rem">
+        <label>{{ t("Notes") }}</label>
+        <textarea name="notes" rows="2">{{ po.notes or '' if po }}</textarea>
+      </div>
+    </div>
+  </div>
+
+  <div class="btn-row">
+    <button class="btn" type="submit">{{ 'Save changes' if po else 'Create purchase order' }}</button>
+    <a class="btn ghost" href="{{ url_for('purchase_orders.detail', po_id=po.id) if po else url_for('purchase_orders.index') }}">{{ t("Cancel") }}</a>
+  </div>
+</form>
+{% endblock %}

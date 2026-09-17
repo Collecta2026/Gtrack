@@ -1,0 +1,100 @@
+{% extends "base.html" %}
+{% block heading %}{{ t(label) }}{% endblock %}
+{% block crumb %}{{ records | length }} {{ t("record(s)") }}{% endblock %}
+
+{% block actions %}
+  <a class="btn ghost sm" href="{{ url_for('masters.index') }}">{{ t("All master data") }}</a>
+{% endblock %}
+
+{% macro field_input(name, flabel, ftype, okey, record) %}
+  <div class="field">
+    <label>{{ t(flabel) }}</label>
+    {% set value = record[name] if record else None %}
+    {% if ftype == 'select' %}
+      <select name="{{ name }}">
+        <option value="">—</option>
+        {% for val, lab in options_fn(okey) %}
+          <option value="{{ val }}" {{ 'selected' if value is not none and val == value | string }}>{{ t(lab) }}</option>
+        {% endfor %}
+      </select>
+    {% elif ftype == 'number' %}
+      <input type="number" name="{{ name }}" value="{{ value if value is not none else '' }}">
+    {% elif ftype == 'checkbox' %}
+      <select name="{{ name }}">
+        <option value="">{{ t("No") }}</option>
+        <option value="1" {{ 'selected' if value }}>{{ t("Yes") }}</option>
+      </select>
+    {% else %}
+      <input type="text" name="{{ name }}" value="{{ value if value is not none else '' }}">
+    {% endif %}
+  </div>
+{% endmacro %}
+
+{% block content %}
+<div class="card">
+  {% if records %}
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          {% for name, flabel, ftype, okey in fields %}<th>{{ t(flabel) }}</th>{% endfor %}
+          {% if current_user.can('edit_masters') %}<th></th>{% endif %}
+        </tr>
+      </thead>
+      <tbody>
+      {% for r in records %}
+        <tr>
+          {% for name, flabel, ftype, okey in fields %}
+            <td class="small">
+              {% set value = r[name] %}
+              {% if ftype == 'checkbox' %}
+                {{ t("Yes") if value else t("No") }}
+              {% elif okey and value %}
+                {% set opts = options_fn(okey) %}
+                {% set match = opts | selectattr('0', 'equalto', value | string) | first %}
+                {{ t(match[1]) if match else value }}
+              {% else %}
+                {{ value if value not in (None, '') else '—' }}
+              {% endif %}
+            </td>
+          {% endfor %}
+          {% if current_user.can('edit_masters') %}
+          <td class="right">
+            <details class="inline-add" style="border:none;padding:0;margin:0">
+              <summary>{{ t("Edit") }}</summary>
+              <form method="post" action="{{ url_for('masters.save', entity=entity) }}" style="margin-top:.5rem;text-align:left">
+                <input type="hidden" name="id" value="{{ r.id }}">
+                <div class="grid c3">
+                  {% for name, flabel, ftype, okey in fields %}
+                    {{ field_input(name, flabel, ftype, okey, r) }}
+                  {% endfor %}
+                </div>
+                <div class="btn-row mt1"><button class="btn sm" type="submit">{{ t("Save changes") }}</button></div>
+              </form>
+            </details>
+          </td>
+          {% endif %}
+        </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}<div class="empty">{{ t("No records yet.") }}</div>{% endif %}
+
+  {% if current_user.can('edit_masters') %}
+  <div class="card-body">
+    <details class="inline-add" style="border:none;padding:0">
+      <summary>{{ t("Add a record") }}</summary>
+      <form method="post" action="{{ url_for('masters.save', entity=entity) }}" style="margin-top:.6rem">
+        <div class="grid c3">
+          {% for name, flabel, ftype, okey in fields %}
+            {{ field_input(name, flabel, ftype, okey, none) }}
+          {% endfor %}
+        </div>
+        <div class="btn-row mt1"><button class="btn sm" type="submit">{{ t("Save record") }}</button></div>
+      </form>
+    </details>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}

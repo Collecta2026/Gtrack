@@ -1,0 +1,113 @@
+{% extends "base.html" %}
+{% block heading %}{{ t("Allocations") }}{% endblock %}
+{% block crumb %}{{ t("Which machine belongs to which customer") }}{% endblock %}
+
+{% block actions %}
+  <a class="btn ghost sm" href="{{ url_for('assets.allocations', export='xlsx') }}">{{ t("Excel") }}</a>
+  <a class="btn ghost sm" href="{{ url_for('assets.allocations', export='pdf') }}">{{ t("PDF") }}</a>
+{% endblock %}
+
+{% block content %}
+
+<div class="tiles">
+  <div class="tile amber"><div class="lab">{{ t("Awaiting installation") }}</div><div class="val">{{ pending | length }}</div></div>
+  <div class="tile good"><div class="lab">{{ t("Installed") }}</div><div class="val">{{ installed | length }}</div></div>
+  {% if current_user.can('view_all') %}
+  <div class="tile"><div class="lab">{{ t("Unallocated lines") }}</div><div class="val">{{ unallocated | length }}</div>
+    <div class="sub">{{ t("no customer yet") }}</div></div>
+  {% endif %}
+</div>
+
+<div class="card">
+  <div class="card-head"><h2>{{ t("Awaiting installation") }}</h2></div>
+  {% if pending %}
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>{{ t("Customer") }}</th><th>{{ t("Serial / item") }}</th><th>{{ t("Shipment") }}</th><th>{{ t("Stage") }}</th>
+        <th>{{ t("ETA") }}</th><th>{{ t("Expected install") }}</th><th>{{ t("Sales owner") }}</th><th></th></tr></thead>
+      <tbody>
+      {% for a in pending %}
+        <tr>
+          <td class="small"><strong>{{ a.customer.customer_name if a.customer else '—' }}</strong></td>
+          <td class="small">
+            {% if a.asset %}<a href="{{ url_for('assets.detail', asset_id=a.asset.id) }}">{{ a.asset.serial_no }}</a>
+            {% else %}{{ a.quantity | money }} × {{ (a.item.description or '—') | truncate(28) }}{% endif %}
+          </td>
+          <td class="small">
+            {% if a.shipment %}<a href="{{ url_for('shipments.detail', shipment_id=a.shipment.id) }}">{{ a.shipment.reference_no }}</a>{% else %}—{% endif %}
+          </td>
+          <td class="small">
+            {% if a.shipment %}
+              <span class="pill {{ 'green' if a.shipment.current_stage in ['warehouse','installation'] else 'navy' }}">{{ a.shipment.stage_label }}</span>
+            {% endif %}
+          </td>
+          <td class="small nowrap">{{ a.shipment.eta | shortdate if a.shipment else '—' }}</td>
+          <td class="small nowrap">{{ a.expected_install_date | shortdate }}</td>
+          <td class="small">{{ a.customer.sales_owner.name if a.customer and a.customer.sales_owner else '—' }}</td>
+          <td class="right">
+            {% if current_user.can('edit_allocation') %}
+              <form method="post" action="{{ url_for('shipments.confirm_install', alloc_id=a.id) }}">
+                <button class="btn ghost sm" type="submit">{{ t("Confirm install") }}</button>
+              </form>
+            {% endif %}
+          </td>
+        </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}<div class="empty">{{ t("Nothing is currently awaiting installation.") }}</div>{% endif %}
+</div>
+
+{% if unallocated %}
+<div class="card">
+  <div class="card-head"><h2>{{ t("Unallocated stock") }}</h2><span class="tiny muted">{{ t("units with no customer assigned") }}</span></div>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>{{ t("Shipment") }}</th><th>{{ t("Stage") }}</th><th>{{ t("Item") }}</th><th class="num">{{ t("Free qty") }}</th></tr></thead>
+      <tbody>
+      {% for row in unallocated %}
+        <tr>
+          <td class="small"><a href="{{ url_for('shipments.detail', shipment_id=row.shipment.id) }}">{{ row.shipment.reference_no }}</a></td>
+          <td class="small">{{ row.shipment.stage_label }}</td>
+          <td class="small">{{ (row.item.description or '—') | truncate(50) }}</td>
+          <td class="num small"><span class="pill amber">{{ row.qty | money }}</span></td>
+        </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endif %}
+
+<div class="card">
+  <div class="card-head"><h2>{{ t("Installed") }}</h2></div>
+  {% if installed %}
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>{{ t("Customer") }}</th><th>{{ t("Serial") }}</th><th>{{ t("Shipment") }}</th><th>{{ t("Installed") }}</th><th>{{ t("Warranty ends") }}</th></tr></thead>
+      <tbody>
+      {% for a in installed %}
+        <tr>
+          <td class="small">{{ a.customer.customer_name if a.customer else '—' }}</td>
+          <td class="small">
+            {% if a.asset %}<a href="{{ url_for('assets.detail', asset_id=a.asset.id) }}">{{ a.asset.serial_no }}</a>{% else %}—{% endif %}
+          </td>
+          <td class="small">
+            {% if a.shipment %}<a href="{{ url_for('shipments.detail', shipment_id=a.shipment.id) }}">{{ a.shipment.reference_no }}</a>{% else %}—{% endif %}
+          </td>
+          <td class="small nowrap">{{ a.install_confirmed_date | shortdate }}</td>
+          <td class="small nowrap">
+            {% if a.asset and a.asset.warranty_end_date %}
+              {{ a.asset.warranty_end_date | shortdate }}
+              {% if a.asset.warranty_active %}<span class="pill green">{{ t("active") }}</span>{% endif %}
+            {% else %}—{% endif %}
+          </td>
+        </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}<div class="empty">{{ t("No installations confirmed yet.") }}</div>{% endif %}
+</div>
+{% endblock %}

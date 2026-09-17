@@ -1,0 +1,188 @@
+{% extends "base.html" %}
+{% block heading %}{{ t("Help & user guide") }}{% endblock %}
+{% block crumb %}{{ t("What every screen does, and how the common jobs are done") }}{% endblock %}
+
+{% block content %}
+
+<div class="card">
+  <div class="card-body">
+    <div class="grid c3">
+      <div>
+        <h3>{{ t("Jump to") }}</h3>
+        <div class="small">
+          <div><a href="#start">{{ t("Getting started") }}</a></div>
+          <div><a href="#menu">{{ t("Every menu item") }}</a></div>
+          <div><a href="#stages">{{ t("The twelve stages") }}</a></div>
+        </div>
+      </div>
+      <div>
+        <h3>&nbsp;</h3>
+        <div class="small">
+          <div><a href="#workflows">{{ t("Common workflows") }}</a></div>
+          <div><a href="#roles">{{ t("Roles & permissions") }}</a></div>
+          <div><a href="#refs">{{ t("Document and cost types") }}</a></div>
+        </div>
+      </div>
+      <div>
+        <h3>&nbsp;</h3>
+        <div class="small">
+          <div><a href="#glossary">{{ t("Glossary") }}</a></div>
+          <div><a href="#faq">{{ t("Questions that come up") }}</a></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ============ GETTING STARTED ============ -->
+<div id="start" class="card">
+  <div class="card-head"><h2>{{ t("Getting started") }}</h2></div>
+  <div class="card-body">
+    <p class="small">{{ t("intro_para_1", app=app_name, org=org_name) }}</p>
+    <p class="small">{{ t("intro_para_2") }}</p>
+    <p class="small">{{ t("intro_para_3") }}</p>
+  </div>
+</div>
+
+<!-- ============ MENU GUIDE ============ -->
+<div id="menu" class="card">
+  <div class="card-head"><h2>{{ t("Every menu item, explained") }}</h2></div>
+  <div class="card-body">
+    {% for title, anchor, points in menu_guide %}
+      <div style="border:1px solid var(--line);border-radius:6px;padding:.8rem;margin-bottom:.7rem">
+        <h3 style="margin-bottom:.4rem">{{ title }}</h3>
+        <dl class="kv">
+          {% for label, text in points %}
+            <dt>{{ label }}</dt><dd class="small">{{ text }}</dd>
+          {% endfor %}
+        </dl>
+      </div>
+    {% endfor %}
+  </div>
+</div>
+
+<!-- ============ STAGES ============ -->
+<div id="stages" class="card">
+  <div class="card-head">
+    <h2>{{ t("The twelve stages") }}</h2>
+    <span class="tiny muted">{{ t("a shipment closes at warehouse receipt; installation follows through the allocation") }}</span>
+  </div>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th class="num">#</th><th>{{ t("Stage") }}</th><th>{{ t("Who owns it") }}</th></tr></thead>
+      <tbody>
+      {% for num, label, owner in stages %}
+        <tr>
+          <td class="num small">{{ num }}</td>
+          <td class="small"><strong>{{ label }}</strong></td>
+          <td class="small muted">{{ owner }}</td>
+        </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  <div class="card-body tight">
+    <div class="tiny muted">{{ t("stages_note") }}</div>
+  </div>
+</div>
+
+<!-- ============ WORKFLOWS ============ -->
+<div id="workflows" class="card">
+  <div class="card-head"><h2>{{ t("Common workflows") }}</h2></div>
+  <div class="card-body">
+    {% for title, text in workflows %}
+      <div style="padding:.5rem 0;border-bottom:1px solid var(--line-soft)">
+        <h3 style="margin-bottom:.25rem">{{ title }}</h3>
+        <div class="small">{{ text }}</div>
+      </div>
+    {% endfor %}
+  </div>
+</div>
+
+<!-- ============ ROLES ============ -->
+<div id="roles" class="card">
+  <div class="card-head"><h2>{{ t("Roles & permissions") }}</h2></div>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>{{ t("Role") }}</th><th>{{ t("What they can do") }}</th></tr></thead>
+      <tbody>
+      {% for code, name, description, perms in roles %}
+        <tr>
+          <td class="small nowrap"><strong>{{ name }}</strong></td>
+          <td class="small">{{ description }}</td>
+        </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  <div class="card-body tight">
+    <div class="tiny muted">{{ t("roles_note") }}</div>
+  </div>
+</div>
+
+<!-- ============ REFERENCE LISTS ============ -->
+<div id="refs" class="card">
+  <div class="card-head"><h2>{{ t("Document and cost types") }}</h2></div>
+  <div class="card-body">
+    <div class="grid c2">
+      <div>
+        <h3>{{ t("Documents tracked") }}</h3>
+        {% for code, label in doc_types %}
+          <div class="small" style="padding:.12rem 0">{{ label }}</div>
+        {% endfor %}
+      </div>
+      <div>
+        <h3>{{ t("Cost categories") }}</h3>
+        {% for code, label in cost_types %}
+          <div class="small" style="padding:.12rem 0">{{ label }}</div>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ============ GLOSSARY ============ -->
+<div id="glossary" class="card">
+  <div class="card-head"><h2>{{ t("Glossary") }}</h2></div>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>{{ t("Term") }}</th><th>{{ t("Meaning") }}</th></tr></thead>
+      <tbody>
+      {% for term, meaning in glossary %}
+        <tr>
+          <td class="small nowrap"><strong>{{ term }}</strong></td>
+          <td class="small">{{ meaning }}</td>
+        </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- ============ FAQ ============ -->
+<div id="faq" class="card">
+  <div class="card-head"><h2>{{ t("Questions that come up") }}</h2></div>
+  <div class="card-body">
+    <dl class="kv">
+      <dt>{{ t("Why is a 2023 shipment not in 'open'?") }}</dt>
+      <dd class="small">{{ t("A shipment closes when it is received into the warehouse — that is the end of the import job. What happens afterwards is tracked through the allocation, under Allocations and Customers.") }}</dd>
+
+      <dt>{{ t("Why can't I see a colleague's shipments?") }}</dt>
+      <dd class="small">{{ t("Sales accounts are scoped to their own customers. Ask an administrator if you need wider access.") }}</dd>
+
+      <dt>{{ t("Where do notifications actually go?") }}</dt>
+      <dd class="small">{{ t("In this build they are written to the notification log rather than emailed, so you can see exactly what would have been sent. Enabling live sending is a configuration change, not a rebuild.") }}</dd>
+
+      <dt>{{ t("Can I change the alert rules?") }}</dt>
+      <dd class="small">{{ t("Yes — Administration, Notification rules. Triggers, audiences, channels and the message text are all editable without touching code.") }}</dd>
+
+      <dt>{{ t("Which currency are totals in?") }}</dt>
+      <dd class="small">{{ t("Everything aggregates into the base currency so mixed-currency shipments add up. Original amounts are always shown alongside.") }}</dd>
+
+      <dt>{{ t("Is anything I do recorded?") }}</dt>
+      <dd class="small">{{ t("Yes. Every field-level change is written to the audit log with your name and the time, which is deliberate given the governance standards this system sits under.") }}</dd>
+    </dl>
+  </div>
+</div>
+
+{% endblock %}

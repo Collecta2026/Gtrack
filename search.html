@@ -1,0 +1,172 @@
+{% extends "base.html" %}
+{% block heading %}{{ t("Search") }}{% endblock %}
+{% block crumb %}
+  {% if term %}{{ shipment_results | length }} shipment(s) matching "{{ term }}"
+  {% else %}Find anything by any reference{% endif %}
+{% endblock %}
+
+{% block actions %}
+  {% if term and shipment_results %}
+    <a class="btn ghost sm" href="{{ url_for('search.index', q=term, export='xlsx') }}">{{ t("Excel") }}</a>
+    <a class="btn ghost sm" href="{{ url_for('search.index', q=term, export='pdf') }}">{{ t("PDF") }}</a>
+  {% endif %}
+{% endblock %}
+
+{% block content %}
+
+<div class="card">
+  <div class="card-body">
+    <form method="get" action="{{ url_for('search.index') }}">
+      <div class="inline-form">
+        <div class="field" style="flex:1;min-width:280px">
+          <label>{{ t("Search term") }}</label>
+          <input type="text" name="q" value="{{ term }}" autofocus
+                 placeholder="SHP-0042 · ACID · BL/AWB · PO number · invoice no · serial no · product · customer">
+        </div>
+        <button class="btn" type="submit">{{ t("Search") }}</button>
+      </div>
+    </form>
+    <div class="tiny muted" style="margin-top:.6rem">
+      Searches shipment references, ACID numbers, bills of lading and air waybills,
+      purchase orders, supplier invoices, machine serial numbers, product descriptions,
+      models, HS codes, quotation references, Form 4 registrations, and customer,
+      supplier and forwarder names. Partial matches work — typing
+      <code>LRG</code> finds every LargeV serial.
+    </div>
+  </div>
+</div>
+
+{% if term %}
+
+  {% if shipment_results %}
+  <div class="card">
+    <div class="card-head">
+      <h2>{{ t("Shipments") }}</h2>
+      <span class="tiny muted">{{ shipment_results | length }} found</span>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>{{ t("Reference") }}</th><th>{{ t("Matched on") }}</th><th>{{ t("Stage") }}</th><th>{{ t("Brand") }}</th>
+          <th>{{ t("Route") }}</th><th>{{ t("ETA") }}</th><th class="num">{{ t("Cost") }} ({{ base_currency }})</th></tr></thead>
+        <tbody>
+        {% for entry in shipment_results %}
+          {% set s = entry.shipment %}
+          <tr>
+            <td class="nowrap">
+              <a href="{{ url_for('shipments.detail', shipment_id=s.id) }}"><strong>{{ s.reference_no }}</strong></a>
+              {% if s.is_delayed %}<span class="pill red">{{ t("late") }}</span>{% endif %}
+            </td>
+            <td class="small">
+              {% for m in entry.matches %}
+                <div class="tiny">{{ m }}</div>
+              {% endfor %}
+            </td>
+            <td class="small">
+              <span class="pill {{ 'green' if s.current_stage in ['warehouse','installation'] else 'red' if s.current_stage in ['cancelled','re_exported'] else 'navy' }}">
+                {{ s.stage_label }}
+              </span>
+            </td>
+            <td class="small">{{ s.brand.brand_name if s.brand else '—' }}</td>
+            <td class="small nowrap">{{ s.origin or '—' }} → {{ s.destination or '—' }}</td>
+            <td class="small nowrap">{{ s.eta | shortdate }}</td>
+            <td class="num small">{{ s.total_cost | money }}</td>
+          </tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+  {% endif %}
+
+  {% if other and other.assets %}
+  <div class="card">
+    <div class="card-head"><h2>{{ t("Machines") }}</h2><span class="tiny muted">{{ other.assets | length }} unit(s)</span></div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>{{ t("Serial no") }}</th><th>{{ t("Model") }}</th><th>{{ t("Status") }}</th><th>{{ t("Shipment") }}</th><th>{{ t("Customer") }}</th></tr></thead>
+        <tbody>
+        {% for a in other.assets %}
+          <tr>
+            <td class="small"><a href="{{ url_for('assets.detail', asset_id=a.id) }}"><strong>{{ a.serial_no }}</strong></a></td>
+            <td class="small">{{ a.model_no or '—' }}</td>
+            <td><span class="pill {{ 'green' if a.status == 'installed' else 'amber' if a.status == 'allocated' else 'grey' }}">{{ a.status_label }}</span></td>
+            <td class="small">
+              {% if a.shipment %}<a href="{{ url_for('shipments.detail', shipment_id=a.shipment.id) }}">{{ a.shipment.reference_no }}</a>{% endif %}
+            </td>
+            <td class="small">{{ a.allocation.customer.customer_name if a.allocation and a.allocation.customer else '—' }}</td>
+          </tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+  {% endif %}
+
+  {% if other and other.purchase_orders %}
+  <div class="card">
+    <div class="card-head"><h2>{{ t("Purchase orders") }}</h2></div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>{{ t("PO number") }}</th><th>{{ t("Supplier") }}</th><th>{{ t("Status") }}</th><th class="num">{{ t("Value") }}</th></tr></thead>
+        <tbody>
+        {% for p in other.purchase_orders %}
+          <tr>
+            <td class="small"><a href="{{ url_for('purchase_orders.detail', po_id=p.id) }}"><strong>{{ p.po_number }}</strong></a></td>
+            <td class="small">{{ p.supplier.name if p.supplier else '—' }}</td>
+            <td><span class="pill navy">{{ p.status_label }}</span></td>
+            <td class="num small">{{ p.total_value | money(p.currency) }}</td>
+          </tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+  {% endif %}
+
+  {% if other and (other.customers or other.suppliers or other.carriers) %}
+  <div class="card">
+    <div class="card-head"><h2>{{ t("Parties") }}</h2></div>
+    <div class="card-body">
+      {% if other.customers %}
+        <h3>{{ t("Customers") }}</h3>
+        {% for c in other.customers %}
+          <div class="small" style="padding:.2rem 0">
+            <a href="{{ url_for('assets.customers') }}">{{ c.customer_name }}</a>
+            <span class="muted tiny">{{ c.city or '' }}
+              {% if c.sales_owner %}· {{ c.sales_owner.name }}{% endif %}
+              · {{ c.allocations | length }} allocation(s)</span>
+          </div>
+        {% endfor %}
+      {% endif %}
+      {% if other.suppliers %}
+        <h3 style="margin-top:.7rem">{{ t("Suppliers") }}</h3>
+        {% for s in other.suppliers %}
+          <div class="small" style="padding:.2rem 0">{{ s.name }}
+            <span class="muted tiny">{{ s.country or '' }} · {{ s.shipments | length }} shipment(s)</span>
+          </div>
+        {% endfor %}
+      {% endif %}
+      {% if other.carriers %}
+        <h3 style="margin-top:.7rem">{{ t("Carriers & forwarders") }}</h3>
+        {% for c in other.carriers %}
+          <div class="small" style="padding:.2rem 0">{{ c.name }}
+            <span class="muted tiny">{{ (c.type or '').replace('_', ' ') }}</span>
+          </div>
+        {% endfor %}
+      {% endif %}
+    </div>
+  </div>
+  {% endif %}
+
+  {% if not shipment_results and not (other and (other.assets or other.purchase_orders
+        or other.customers or other.suppliers or other.carriers)) %}
+    <div class="card">
+      <div class="empty">
+        Nothing found for "<strong>{{ term }}</strong>".<br>
+        <span class="tiny">Try a partial reference — <code>SHP-01</code>, <code>LRG</code>, or part of a product name.</span>
+      </div>
+    </div>
+  {% endif %}
+
+{% endif %}
+{% endblock %}

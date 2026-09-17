@@ -1,0 +1,73 @@
+{% extends "base.html" %}
+{% block heading %}{{ t("Freight quotations") }}{% endblock %}
+{% block crumb %}{{ t("Quoted versus actual freight cost") }}{% endblock %}
+
+{% block actions %}
+  <a class="btn ghost sm" href="{{ url_for('finance.quotations', export='xlsx') }}">{{ t("Excel") }}</a>
+  <a class="btn ghost sm" href="{{ url_for('finance.quotations', export='pdf') }}">{{ t("PDF") }}</a>
+{% endblock %}
+
+{% block content %}
+
+<div class="card">
+  <div class="card-head">
+    <h2>{{ t("Quoted vs actual") }}</h2>
+    <span class="tiny muted">both sides converted to {{ base_currency }} — quotes and freight invoices often differ in currency</span>
+  </div>
+  {% if variances %}
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>{{ t("Shipment") }}</th><th>{{ t("Forwarder") }}</th><th>{{ t("Quote ref") }}</th><th class="num">{{ t("Quoted") }}</th>
+        <th class="num">{{ t("Actual") }}</th><th class="num">{{ t("Variance") }}</th><th class="num">%</th></tr></thead>
+      <tbody>
+      {% for v in variances %}
+        <tr>
+          <td class="small"><a href="{{ url_for('shipments.detail', shipment_id=v.shipment.id) }}">{{ v.shipment.reference_no }}</a></td>
+          <td class="small">{{ v.quote.forwarder.name if v.quote.forwarder else '—' }}</td>
+          <td class="small">{{ v.quote.quote_ref or '—' }}</td>
+          <td class="num small">{{ v.quoted | money }}</td>
+          <td class="num small">{{ v.actual | money }}</td>
+          <td class="num small">
+            <span class="pill {{ 'red' if v.variance > 0 else 'green' }}">
+              {{ '+' if v.variance > 0 }}{{ v.variance | money }}
+            </span>
+          </td>
+          <td class="num small">{{ '%.1f' | format(v.pct) }}%</td>
+        </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+    <div class="empty">{{ t("No shipment yet has both a selected quotation and an invoiced freight cost.") }}</div>
+  {% endif %}
+</div>
+
+<div class="card">
+  <div class="card-head"><h2>{{ t("All quotations") }}</h2><span class="tiny muted">{{ quotes | length }} logged</span></div>
+  {% if quotes %}
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>{{ t("Shipment") }}</th><th>{{ t("Forwarder") }}</th><th>{{ t("Ref") }}</th><th>{{ t("Date") }}</th><th class="num">{{ t("Amount") }}</th>
+        <th class="num">{{ t("Transit") }}</th><th>{{ t("Valid until") }}</th><th>{{ t("Selected") }}</th></tr></thead>
+      <tbody>
+      {% for q in quotes %}
+        <tr>
+          <td class="small">
+            {% if q.shipment %}<a href="{{ url_for('shipments.detail', shipment_id=q.shipment.id) }}">{{ q.shipment.reference_no }}</a>{% else %}—{% endif %}
+          </td>
+          <td class="small">{{ q.forwarder.name if q.forwarder else '—' }}</td>
+          <td class="small">{{ q.quote_ref or '—' }}</td>
+          <td class="small nowrap">{{ q.quote_date | shortdate }}</td>
+          <td class="num small">{{ q.quoted_amount | money(q.currency) }}</td>
+          <td class="num small">{{ q.transit_days ~ 'd' if q.transit_days else '—' }}</td>
+          <td class="small nowrap">{{ q.valid_until | shortdate }}</td>
+          <td>{% if q.is_selected %}<span class="pill green">{{ t("Selected") }}</span>{% endif %}</td>
+        </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}<div class="empty">{{ t("No quotations logged.") }}</div>{% endif %}
+</div>
+{% endblock %}

@@ -1,0 +1,84 @@
+{% extends "base.html" %}
+{% block heading %}{{ t("Fulfilment centre stock") }}{% endblock %}
+{% block crumb %}{{ t("Goods held in the free zone, waiting to be called forward") }}{% endblock %}
+
+{% block actions %}
+  <a class="btn ghost sm" href="{{ url_for('assets.hub_stock', export='xlsx') }}">{{ t("Excel") }}</a>
+  <a class="btn ghost sm" href="{{ url_for('assets.hub_stock', export='csv') }}">{{ t("CSV") }}</a>
+  <a class="btn ghost sm" href="{{ url_for('assets.hub_stock', export='pdf') }}">{{ t("PDF") }}</a>
+{% endblock %}
+
+{% block content %}
+
+{% if buckets %}
+<div class="tiles">
+  {% for b in buckets %}
+  <div class="tile">
+    <div class="lab">{{ b.location.name if b.location else t("Unassigned location") }}</div>
+    <div class="val">{{ b.value | money }}</div>
+    <div class="sub">
+      {{ b.lines }} {{ t("line(s)") }} · {{ b.units | money }} {{ t("units held") }}
+      {% if b.location and b.location.is_free_zone %} · {{ t("free zone") }}{% endif %}
+    </div>
+  </div>
+  {% endfor %}
+</div>
+{% endif %}
+
+<div class="card">
+  <div class="card-head">
+    <h2>{{ t("Stock held") }}</h2>
+    <span class="tiny muted">{{ t("oldest first — anything held a long time is tying up cash") }}</span>
+  </div>
+  {% if rows %}
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>{{ t("Item") }}</th><th>{{ t("Origin supplier") }}</th><th>{{ t("Inbound leg") }}</th>
+          <th>{{ t("Location") }}</th>
+          <th class="num">{{ t("Qty in") }}</th><th class="num">{{ t("Called forward") }}</th>
+          <th class="num">{{ t("Balance held") }}</th><th class="num">{{ t("Value") }}</th>
+          <th>{{ t("Arrived") }}</th><th class="num">{{ t("Days held") }}</th>
+        </tr>
+      </thead>
+      <tbody>
+      {% for r in rows %}
+        <tr>
+          <td class="small"><strong>{{ r.item.description or '—' }}</strong>
+            {% if r.item.category %}<span class="pill grey">{{ r.item.category_label }}</span>{% endif %}
+            {% if r.serials %}<div class="tiny muted">{{ r.serials | join(', ') | truncate(48) }}</div>{% endif %}
+          </td>
+          <td class="small">{{ r.item.supplier.name if r.item.supplier else (r.shipment.supplier.name if r.shipment.supplier else '—') }}</td>
+          <td class="small nowrap">
+            <a href="{{ url_for('shipments.detail', shipment_id=r.shipment.id) }}">{{ r.shipment.reference_no }}</a>
+          </td>
+          <td class="small">{{ r.location.name if r.location else '—' }}</td>
+          <td class="num small">{{ r.qty | money }}</td>
+          <td class="num small">{% if r.called %}{{ r.called | money }}{% else %}<span class="muted">—</span>{% endif %}</td>
+          <td class="num small"><strong>{{ r.balance | money }}</strong></td>
+          <td class="num small">{{ r.value | money }}</td>
+          <td class="small nowrap">{{ r.arrived | shortdate }}</td>
+          <td class="num">
+            {% if r.days_held is not none %}
+              <span class="pill {{ 'red' if r.days_held > 180 else 'amber' if r.days_held > 90 else 'grey' }}">{{ r.days_held }}d</span>
+            {% else %}<span class="muted">—</span>{% endif %}
+          </td>
+        </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+    <div class="empty">{{ t("Nothing is currently held at the fulfilment centre.") }}</div>
+  {% endif %}
+</div>
+
+<div class="card">
+  <div class="card-body tight">
+    <div class="tiny muted">
+      {{ t("A line counts as held once its inbound leg has landed at the fulfilment centre. When an order calls stock forward, the re-export leg links back to this line and the balance falls.") }}
+    </div>
+  </div>
+</div>
+{% endblock %}
