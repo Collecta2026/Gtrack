@@ -1,0 +1,65 @@
+{% extends "base.html" %}
+{% block heading %}{{ t("Authorisation matrix") }}{% endblock %}
+{% block crumb %}{{ t("What each role can see and do — separate from the role list itself") }}{% endblock %}
+
+{% block actions %}
+  <a class="btn ghost sm" href="{{ url_for('admin.roles') }}">{{ t("Roles") }}</a>
+{% endblock %}
+
+{% block content %}
+<form method="post">
+<div class="card">
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>{{ t("Permission") }}</th>
+          {% for r in roles %}
+            <th class="small nowrap">{{ r.role_name }}</th>
+          {% endfor %}
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td class="small"><strong>{{ t("Full access") }}</strong></td>
+          {% for r in roles %}
+            <td class="num">
+              {% if r.code != 'admin' %}
+                <input type="hidden" name="role_ids" value="{{ r.id }}">
+              {% endif %}
+              {% if r.code == 'admin' %}
+                <span class="pill navy">{{ t("always") }}</span>
+              {% else %}
+                <input type="checkbox" name="full__{{ r.id }}"
+                       {{ 'checked' if '*' in r.perm_list() }}
+                       onchange="var row=this.closest('table').querySelectorAll('.perm-{{ r.id }}'); row.forEach(function(c){c.disabled=this.checked;}, this)">
+              {% endif %}
+            </td>
+          {% endfor %}
+        </tr>
+        {% for key, label in permissions %}
+        <tr>
+          <td class="small">{{ t(label) }}<div class="tiny muted">{{ key }}</div></td>
+          {% for r in roles %}
+            <td class="num">
+              {% if r.code == 'admin' %}
+                <span class="pill navy">✓</span>
+              {% else %}
+                <input type="checkbox" class="perm-{{ r.id }}" name="perm__{{ r.id }}__{{ key }}"
+                       {{ 'checked' if key in r.perm_list() }}
+                       {{ 'disabled' if '*' in r.perm_list() }}>
+              {% endif %}
+            </td>
+          {% endfor %}
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  <div class="card-body">
+    <p class="small muted">{{ t("Tick \"Full access\" to give a role everything, including permissions added later. Admin always has full access and manages this matrix.") }}</p>
+    <div class="btn-row"><button class="btn sm" type="submit">{{ t("Save authorisation matrix") }}</button></div>
+  </div>
+</div>
+</form>
+{% endblock %}

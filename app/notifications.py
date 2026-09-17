@@ -17,7 +17,7 @@ from .models import (db, Shipment, PurchaseOrder, CostLine, User, Role,
 
 DEFAULT_RULES = [
     dict(name="PO overdue against expected ready date", trigger_type="po_overdue",
-         trigger_value="0", audience_role="procurement", channel="email",
+         trigger_value="0", audience_role="logistics", channel="email",
          template="Purchase order {po_number} to {supplier} passed its expected ready date "
                   "({expected_ready_date}). Chase the supplier before it becomes a shipment delay."),
     dict(name="Quotation not selected after order confirmation", trigger_type="quote_pending",
@@ -33,11 +33,11 @@ DEFAULT_RULES = [
          template="Shipment {reference_no} ({brand}) has cleared customs. "
                   "Customers awaiting installation: {customers}. Contact them to arrange scheduling."),
     dict(name="Received into warehouse", trigger_type="stage_reached",
-         trigger_value=Stage.WAREHOUSE, audience_role="warehouse", channel="in_app",
+         trigger_value=Stage.WAREHOUSE, audience_role="logistics", channel="in_app",
          template="Shipment {reference_no} has been received into the warehouse. "
                   "Confirm condition and serial numbers, then hand over for installation."),
     dict(name="Shipment delayed past ETA", trigger_type="delay", trigger_value="0",
-         audience_role="procurement", channel="email",
+         audience_role="logistics", channel="email",
          template="Shipment {reference_no} has passed its ETA of {eta} without arriving. "
                   "Current stage: {stage}. Escalate with {forwarder}."),
     dict(name="Required document missing", trigger_type="missing_document", trigger_value="3",
@@ -49,7 +49,7 @@ DEFAULT_RULES = [
          template="Payment overdue on shipment {reference_no}: {cost_type} of "
                   "{amount} {currency} to {payable_to}, due {due_date}."),
     dict(name="Weekly management digest", trigger_type="digest", trigger_value="weekly",
-         audience_role="management", channel="email",
+         audience_role="md", channel="email",
          template="Weekly pipeline: {open_count} open shipments, {delayed_count} delayed, "
                   "{unallocated_count} units awaiting customer allocation."),
 ]

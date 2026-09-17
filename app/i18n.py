@@ -196,13 +196,11 @@ TRANSLATIONS.update(_d([
 
 # ---- roles ----
 TRANSLATIONS.update(_d([
+    ("Admin", "مسؤول النظام"),
     ("Administrator", "مدير النظام"),
-    ("Procurement Officer", "مسؤول المشتريات"),
-    ("Logistics & Customs Coordinator", "منسق اللوجستيات والجمارك"),
-    ("Finance / Treasury", "المالية والخزينة"),
-    ("Sales Account Manager", "مدير حسابات المبيعات"),
-    ("Warehouse Officer", "مسؤول المخزن"),
-    ("Management (CEO / CFO)", "الإدارة العليا (الرئيس التنفيذي / المدير المالي)"),
+    ("Logistics Manager", "مدير اللوجستيات"),
+    ("Finance", "المالية"),
+    ("MD", "المدير العام"),
 ]))
 
 # ---- document types ----
@@ -1310,4 +1308,144 @@ TRANSLATIONS.update(_d([
      "وردت هذه السجلات من ملف الإكسل بتواريخ متناقضة. وتُعامَل مدتا العبور والتخليص فيها كغير "
      "معروفتين بدل احتسابها بالسالب، فتبقى المتوسطات أعلاه صادقة. وتصحيح التواريخ على الشحنة "
      "يزيلها من هذه القائمة."),
+]))
+
+# ---- admin: users, roles, authorisation matrix, FX rates ----
+TRANSLATIONS.update(_d([
+    ("Admin", "الإدارة"),
+    ("Users, roles, the authorisation matrix and FX rates",
+     "المستخدمون والأدوار ومصفوفة الصلاحيات وأسعار الصرف"),
+    ("accounts, each assigned a role", "حساب، لكل منها دور محدد"),
+    ("add more at any time", "يمكن إضافة المزيد في أي وقت"),
+    ("what each role can access", "ما يمكن لكل دور الوصول إليه"),
+    ("currencies, indicative unless set", "عملة، أسعارها إرشادية ما لم تُحدَّد"),
+    ("Create accounts and assign each one a role.", "أنشئ الحسابات وحدد لكل منها دوراً."),
+    ("Manage users", "إدارة المستخدمين"),
+    ("The role matrix — currently Logistics Manager, Finance, Sales, Admin and MD. "
+     "Add more whenever the business needs a new one.",
+     "مصفوفة الأدوار — تضم حالياً مدير اللوجستيات، المالية، المبيعات، الإدارة، والمدير العام. "
+     "يمكن إضافة المزيد كلما احتاج العمل إلى دور جديد."),
+    ("Manage roles", "إدارة الأدوار"),
+    ("Separate from the role list itself — exactly what each role can see and do, "
+     "permission by permission.",
+     "مصفوفة منفصلة عن قائمة الأدوار نفسها — تحدد بدقة ما يمكن لكل دور رؤيته والقيام به، "
+     "صلاحية بصلاحية."),
+    ("Open matrix", "فتح المصفوفة"),
+    ("The exchange rates used to convert every cost line into EGP. Indicative until an admin sets one.",
+     "أسعار الصرف المستخدمة لتحويل كل بند تكلفة إلى الجنيه المصري. تبقى إرشادية حتى يحددها أحد المسؤولين."),
+    ("Manage FX rates", "إدارة أسعار الصرف"),
+    ("Triggers, audiences, channels and message templates.", "المحفزات والجمهور والقنوات وقوالب الرسائل."),
+    ("Manage notification rules", "إدارة قواعد الإشعارات"),
+    ("Every field-level change, filterable and exportable.", "كل تغيير على مستوى الحقل، قابل للتصفية والتصدير."),
+    ("View audit log", "عرض سجل التدقيق"),
+
+    ("The role matrix — add more at any time; set what each one can access on the Authorisation matrix",
+     "مصفوفة الأدوار — أضف المزيد في أي وقت؛ وحدد صلاحيات كل دور من مصفوفة الصلاحيات"),
+    ("Authorisation matrix", "مصفوفة الصلاحيات"),
+    ("Access", "الصلاحيات"),
+    ("full access", "صلاحية كاملة"),
+    ("permissions", "صلاحية"),
+    ("edit", "تعديل"),
+    ("edit access", "تعديل الصلاحيات"),
+    ("Add a role", "إضافة دور"),
+    ("Role name", "اسم الدور"),
+    ("Code", "الرمز"),
+    ("derived from the name if left blank", "يُشتق من الاسم إن تُرك فارغاً"),
+    ("New roles start with no access. Grant permissions straight after on the Authorisation matrix.",
+     "تبدأ الأدوار الجديدة بلا صلاحيات. امنحها الصلاحيات مباشرة من مصفوفة الصلاحيات."),
+    ("Add role", "إضافة الدور"),
+    ("A role name is required.", "اسم الدور مطلوب."),
+    ("Role saved. Set what it can access on the Authorisation matrix.",
+     "تم حفظ الدور. حدد صلاحياته من مصفوفة الصلاحيات."),
+    ("Save", "حفظ"),
+
+    ("What each role can see and do — separate from the role list itself",
+     "ما يمكن لكل دور رؤيته والقيام به — بمعزل عن قائمة الأدوار نفسها"),
+    ("Roles", "الأدوار"),
+    ("Permission", "الصلاحية"),
+    ("Full access", "صلاحية كاملة"),
+    ("always", "دائماً"),
+    ("Tick \"Full access\" to give a role everything, including permissions added later. "
+     "Admin always has full access and manages this matrix.",
+     "فعّل \"صلاحية كاملة\" لمنح الدور كل شيء، بما في ذلك الصلاحيات التي تُضاف لاحقاً. "
+     "تملك الإدارة دائماً صلاحية كاملة وهي من يدير هذه المصفوفة."),
+    ("Save authorisation matrix", "حفظ مصفوفة الصلاحيات"),
+    ("Authorisation matrix updated.", "تم تحديث مصفوفة الصلاحيات."),
+
+    ("View all shipments", "عرض جميع الشحنات"),
+    ("View own customers' shipments only", "عرض شحنات عملائهم فقط"),
+    ("View reports & KPIs", "عرض التقارير ومؤشرات الأداء"),
+    ("Export reports", "تصدير التقارير"),
+    ("Edit master data", "تعديل البيانات الأساسية"),
+    ("Edit purchase orders", "تعديل أوامر الشراء"),
+    ("Edit supplier invoices", "تعديل فواتير الموردين"),
+    ("Edit shipments", "تعديل الشحنات"),
+    ("Advance shipment stage", "تحريك مرحلة الشحنة"),
+    ("Edit freight quotations", "تعديل عروض أسعار الشحن"),
+    ("Edit documents", "تعديل المستندات"),
+    ("Edit cost lines", "تعديل بنود التكلفة"),
+    ("Edit Form 4 / bank registration", "تعديل نموذج 4 / التسجيل البنكي"),
+    ("Edit serials / assets", "تعديل الأرقام التسلسلية / الأصول"),
+    ("Edit customer allocations", "تعديل تخصيصات العملاء"),
+    ("Add comments", "إضافة تعليقات"),
+
+    ("FX rates", "أسعار الصرف"),
+    ("Used to convert every cost line into the base currency (EGP)",
+     "تُستخدم لتحويل كل بند تكلفة إلى العملة الأساسية (الجنيه المصري)"),
+    ("Currency", "العملة"),
+    ("Rate to EGP", "السعر مقابل الجنيه المصري"),
+    ("As of", "اعتباراً من"),
+    ("Source", "المصدر"),
+    ("admin-set", "محدد من الإدارة"),
+    ("indicative default", "افتراضي إرشادي"),
+    ("history", "السجل"),
+    ("Set a rate", "تحديد سعر"),
+    ("Saving adds a new dated rate; the most recent one for a currency is what the system uses. "
+     "EGP is always 1.",
+     "الحفظ يضيف سعراً جديداً بتاريخ محدد؛ والنظام يستخدم أحدث سعر لكل عملة. "
+     "الجنيه المصري يساوي دائماً 1."),
+    ("Save rate", "حفظ السعر"),
+    ("Currency and rate are both required.", "العملة والسعر مطلوبان معاً."),
+    ("FX rate saved.", "تم حفظ سعر الصرف."),
+
+    ("User saved.", "تم حفظ المستخدم."),
+    ("Notification rule saved.", "تم حفظ قاعدة الإشعار."),
+]))
+
+# ---- role descriptions (Admin -> Roles) ----
+TRANSLATIONS.update(_d([
+    ("Full access; manages users, roles, FX rates and all master data.",
+     "صلاحية كاملة؛ يدير المستخدمين والأدوار وأسعار الصرف وجميع البيانات الأساسية."),
+    ("Raises and manages purchase orders and supplier invoices; creates and manages shipments, "
+     "quotations and bookings; updates transit and customs milestones; confirms warehouse receipt "
+     "and triggers installation handover; maintains the supplier and logistics master data.",
+     "يُصدر ويدير أوامر الشراء وفواتير الموردين؛ وينشئ ويدير الشحنات وعروض الأسعار والحجوزات؛ "
+     "ويحدّث مراحل العبور والجمارك؛ ويؤكد استلام المستودع ويبدأ تسليم التركيب؛ ويحافظ على "
+     "البيانات الأساسية للموردين واللوجستيات."),
+    ("Manages cost lines, payment status, bank registration and financial reports.",
+     "يدير بنود التكلفة وحالة السداد والتسجيل البنكي والتقارير المالية."),
+    ("Read-only view of shipments and allocations for their own customers; receives milestone "
+     "alerts; can add customer-facing comments.",
+     "عرض للقراءة فقط لشحنات وتخصيصات عملائهم؛ يتلقى تنبيهات المراحل؛ ويمكنه إضافة تعليقات "
+     "موجهة للعملاء."),
+    ("Full read access and dashboards across all shipments; exportable reports.",
+     "صلاحية قراءة كاملة ولوحات معلومات عبر جميع الشحنات؛ وتقارير قابلة للتصدير."),
+
+    ("Admin: users, roles, authorisation, FX rates, audit",
+     "الإدارة: المستخدمون والأدوار والصلاحيات وأسعار الصرف والتدقيق"),
+    ("The role matrix — Logistics Manager, Finance, Sales, Admin and MD out of the "
+     "box. An admin can add more at any time from Admin -> Roles.",
+     "مصفوفة الأدوار — تضم افتراضياً مدير اللوجستيات والمالية والمبيعات والإدارة والمدير العام. "
+     "ويمكن لأحد المسؤولين إضافة المزيد في أي وقت من الإدارة -> الأدوار."),
+    ("Separate from the role list itself — a permission-by-permission "
+     "grid of exactly what each role can see and do. New roles start "
+     "with no access until this is set.",
+     "مصفوفة منفصلة عن قائمة الأدوار نفسها — جدول يحدد بدقة، صلاحية بصلاحية، ما يمكن لكل دور "
+     "رؤيته والقيام به. تبدأ الأدوار الجديدة بلا صلاحيات حتى يتم تحديدها."),
+    ("The exchange rates used to convert every cost line into EGP. Indicative "
+     "defaults until an admin sets one from Admin -> FX rates; each save is dated, "
+     "and the most recent rate for a currency is what the system uses.",
+     "أسعار الصرف المستخدمة لتحويل كل بند تكلفة إلى الجنيه المصري. تبقى قيماً إرشادية "
+     "حتى يحددها أحد المسؤولين من الإدارة -> أسعار الصرف؛ وكل حفظ يُسجَّل بتاريخ، "
+     "والنظام يستخدم أحدث سعر لكل عملة."),
 ]))

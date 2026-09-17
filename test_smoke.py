@@ -9,10 +9,11 @@ RUN = uuid.uuid4().hex[:6].upper()   # unique per run, so repeat runs don't coll
 
 from app import create_app
 from app.i18n import TRANSLATIONS
+from app.auth import PERMISSIONS
 from app.models import (db, Shipment, ShipmentItem, Asset, Allocation, PurchaseOrder,
                         CostLine, Customer, Carrier, Supplier, User, NotificationLog,
                         AuditLog, Stage, Location, CustomsBroker, AssetMovement,
-                        BankRegistration)
+                        BankRegistration, Role, to_base)
 
 app = create_app()
 app.config["WTF_CSRF_ENABLED"] = False
@@ -397,13 +398,88 @@ with app.test_client() as c:
 
 with app.test_client() as c:
     login(c, "warehouse@scientificgate.test")
-    get(c, "/shipments/", label="warehouse: shipment list")
-    get(c, "/reports/", expect=403, label="warehouse: blocked from reports")
+    get(c, "/shipments/", label="warehouse user (now Logistics Manager): shipment list")
+    # Warehouse and Procurement were folded into Logistics Manager, which does carry
+    # view_reports — so this account can now see reports, unlike the old warehouse role.
+    get(c, "/reports/", label="warehouse user (now Logistics Manager): can view reports")
+    get(c, "/admin/users", expect=403, label="logistics: blocked from user admin")
 
 with app.test_client() as c:
     login(c, "amr@scientificgate.test")
-    get(c, "/reports/", label="management: reports")
-    get(c, "/admin/audit", expect=403, label="management: blocked from audit admin")
+    get(c, "/reports/", label="MD: reports")
+    get(c, "/admin/audit", expect=403, label="MD: blocked from audit admin")
+
+print("\n=== Role matrix / Authorisation matrix / FX rates (Admin section) ===")
+with app.app_context():
+    role_codes = {r.code for r in Role.query.all()}
+    check("exactly the five requested roles exist by default",
+          role_codes == {"admin", "logistics", "finance", "sales", "md"}, f"({role_codes})")
+    admin_role = Role.query.filter_by(code="admin").first()
+    check("admin role keeps full access", admin_role.has("*"))
+    logistics_role = Role.query.filter_by(code="logistics").first()
+    check("logistics role absorbed procurement permission (edit_po)",
+          logistics_role.has("edit_po"))
+    check("logistics role absorbed warehouse permission (edit_asset)",
+          logistics_role.has("edit_asset"))
+
+with app.test_client() as c:
+    login(c, "zak@scientificgate.test")
+    get(c, "/admin/", label="admin: Admin hub")
+    get(c, "/admin/roles", label="admin: Roles page")
+    get(c, "/admin/authorisation", label="admin: Authorisation matrix page")
+    get(c, "/admin/fx-rates", label="admin: FX rates page")
+
+    # Admin can add a new role — the matrix is not capped at the five defaults.
+    resp = c.post("/admin/roles",
+                  data={"role_name": f"Smoke Test Role {RUN}", "description": "temp"},
+                  follow_redirects=True)
+    check("POST add role", resp.status_code == 200)
+    with app.app_context():
+        new_role = Role.query.filter_by(role_name=f"Smoke Test Role {RUN}").first()
+        check("new role persisted", new_role is not None)
+        check("new role starts with no access", new_role.permissions in (None, ""))
+        new_role_id = new_role.id
+
+    # Grant it a couple of permissions via the Authorisation matrix, separately from
+    # the role list itself. The real page posts the whole matrix as one form (every
+    # role's checkboxes together), so build a realistic full payload here too —
+    # carrying forward every other role's current permissions unchanged — rather
+    # than a partial one that would wipe roles the test isn't touching.
+    with app.app_context():
+        before = {r.id: set(r.perm_list()) for r in Role.query.all() if r.code != "admin"}
+    form_data = {"role_ids": [str(role_id) for role_id in before]}
+    for role_id, perms in before.items():
+        if "*" in perms:
+            form_data[f"full__{role_id}"] = "1"
+        else:
+            for key, _ in PERMISSIONS:
+                if key in perms:
+                    form_data[f"perm__{role_id}__{key}"] = "1"
+    form_data[f"perm__{new_role_id}__view_all"] = "1"
+    form_data[f"perm__{new_role_id}__comment"] = "1"
+
+    resp = c.post("/admin/authorisation", data=form_data, follow_redirects=True)
+    check("POST authorisation matrix", resp.status_code == 200)
+    with app.app_context():
+        r = db.session.get(Role, new_role_id)
+        check("authorisation matrix granted the selected permissions",
+              r.has("view_all") and r.has("comment") and not r.has("edit_shipment"))
+        other_roles_untouched = all(
+            set(db.session.get(Role, rid).perm_list()) == perms
+            for rid, perms in before.items() if rid != new_role_id)
+        check("saving one role's access leaves the other roles' access unchanged",
+              other_roles_untouched)
+
+    # FX rate: set a new admin rate (no date given -> defaults to today, same as the
+    # seed data, so this is the tie-broken "most recent" row) and confirm to_base()
+    # picks it up as the current rate.
+    resp = c.post("/admin/fx-rates",
+                  data={"code": "USD", "rate_to_base": "50.25"},
+                  follow_redirects=True)
+    check("POST set FX rate", resp.status_code == 200)
+    with app.app_context():
+        latest = to_base(1, "USD")
+        check("to_base() reflects the admin-set USD rate", abs(latest - 50.25) < 0.001, f"({latest})")
 
 print("\n=== Bilingual (English / Arabic) ===")
 with app.test_client() as c:

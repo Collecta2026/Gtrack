@@ -1,0 +1,67 @@
+{% extends "base.html" %}
+{% block heading %}{{ t("Admin") }}{% endblock %}
+{% block crumb %}{{ t("Users, roles, the authorisation matrix and FX rates") }}{% endblock %}
+
+{% block content %}
+
+<div class="tiles">
+  <a class="tile" href="{{ url_for('admin.users') }}" style="display:block;color:inherit;text-decoration:none">
+    <div class="lab">{{ t("Users") }}</div>
+    <div class="val">{{ user_count }}</div>
+    <div class="sub">{{ t("accounts, each assigned a role") }}</div>
+  </a>
+  <a class="tile" href="{{ url_for('admin.roles') }}" style="display:block;color:inherit;text-decoration:none">
+    <div class="lab">{{ t("Roles") }}</div>
+    <div class="val">{{ role_count }}</div>
+    <div class="sub">{{ t("add more at any time") }}</div>
+  </a>
+  <a class="tile" href="{{ url_for('admin.authorisation') }}" style="display:block;color:inherit;text-decoration:none">
+    <div class="lab">{{ t("Authorisation matrix") }}</div>
+    <div class="val">→</div>
+    <div class="sub">{{ t("what each role can access") }}</div>
+  </a>
+  <a class="tile" href="{{ url_for('admin.fx_rates') }}" style="display:block;color:inherit;text-decoration:none">
+    <div class="lab">{{ t("FX rates") }}</div>
+    <div class="val">{{ currency_count }}</div>
+    <div class="sub">{{ t("currencies, indicative unless set") }}</div>
+  </a>
+</div>
+
+<div class="card">
+  <div class="card-body">
+    <div class="grid c3">
+      <div>
+        <h3 style="margin:0 0 .3rem">{{ t("Users") }}</h3>
+        <p class="small muted">{{ t("Create accounts and assign each one a role.") }}</p>
+        <a class="btn sm ghost" href="{{ url_for('admin.users') }}">{{ t("Manage users") }}</a>
+      </div>
+      <div>
+        <h3 style="margin:0 0 .3rem">{{ t("Roles") }}</h3>
+        <p class="small muted">{{ t("The role matrix — currently Logistics Manager, Finance, Sales, Admin and MD. Add more whenever the business needs a new one.") }}</p>
+        <a class="btn sm ghost" href="{{ url_for('admin.roles') }}">{{ t("Manage roles") }}</a>
+      </div>
+      <div>
+        <h3 style="margin:0 0 .3rem">{{ t("Authorisation matrix") }}</h3>
+        <p class="small muted">{{ t("Separate from the role list itself — exactly what each role can see and do, permission by permission.") }}</p>
+        <a class="btn sm ghost" href="{{ url_for('admin.authorisation') }}">{{ t("Open matrix") }}</a>
+      </div>
+      <div>
+        <h3 style="margin:0 0 .3rem">{{ t("FX rates") }}</h3>
+        <p class="small muted">{{ t("The exchange rates used to convert every cost line into EGP. Indicative until an admin sets one.") }}</p>
+        <a class="btn sm ghost" href="{{ url_for('admin.fx_rates') }}">{{ t("Manage FX rates") }}</a>
+      </div>
+      <div>
+        <h3 style="margin:0 0 .3rem">{{ t("Notification rules") }}</h3>
+        <p class="small muted">{{ t("Triggers, audiences, channels and message templates.") }}</p>
+        <a class="btn sm ghost" href="{{ url_for('admin.notification_rules') }}">{{ t("Manage notification rules") }}</a>
+      </div>
+      <div>
+        <h3 style="margin:0 0 .3rem">{{ t("Audit log") }}</h3>
+        <p class="small muted">{{ t("Every field-level change, filterable and exportable.") }}</p>
+        <a class="btn sm ghost" href="{{ url_for('admin.audit') }}">{{ t("View audit log") }}</a>
+      </div>
+    </div>
+  </div>
+</div>
+
+{% endblock %}

@@ -1,0 +1,29 @@
+{
+  "_golive_version": "1.0",
+  "name": "gtrack",
+  "entrypoint": "wsgi:app",
+  "server": "wsgi",
+  "framework": "flask",
+  "requirements": "requirements-deploy.txt",
+  "python_version": "3.11.9",
+  "health_path": "/login",
+  "region": "frankfurt",
+  "plan": "starter",
+  "branch": "main",
+  "private_repo": true,
+  "domain": "gtrack.awspro.uk",
+  "database": true,
+  "database_url_var": "GTRACK_DATABASE_URL",
+  "neon_project": "gtrack",
+  "migrate_command": "python seed.py --force",
+  "disk_gb": 5,
+  "disk_mount": "/var/data",
+  "disk_var": "GTRACK_UPLOAD_FOLDER",
+  "env": {
+    "GTRACK_SECRET_KEY": {
+      "generate": 64
+    },
+    "GTRACK_ORG_NAME": "Scientific Gate Egypt",
+    "GTRACK_NOTIFICATIONS_LIVE": "0"
+  }
+}

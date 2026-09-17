@@ -17,16 +17,53 @@ from werkzeug.security import generate_password_hash, check_password_hash
 
 db = SQLAlchemy()
 
-# Indicative FX rates to the base currency (EGP). Kept here so model-level
-# calculations work outside a request context; ExchangeRate holds the dated series.
+# Indicative FX rates to the base currency (EGP) — the fallback used until an
+# admin sets a rate from Admin -> FX rates, and for any currency they haven't
+# touched. ExchangeRate (below) holds the dated series admins actually edit.
 FX_RATES = {"EGP": 1.0, "USD": 48.5, "EUR": 52.0, "CNY": 6.7, "GBP": 61.0, "AED": 13.2}
+
+
+def get_fx_rate(currency):
+    """The rate currently in effect for `currency` -> EGP.
+
+    Prefers the most recent admin-entered ExchangeRate row; falls back to the
+    indicative FX_RATES default when nothing has been set. Cached for the
+    life of a request (via flask.g) so looping over shipment lines doesn't
+    re-query per line.
+    """
+    currency = currency or "EGP"
+    if currency == "EGP":
+        return 1.0
+
+    cache = None
+    try:
+        from flask import g, has_app_context
+        if has_app_context():
+            cache = g.setdefault("_fx_rate_cache", {})
+            if currency in cache:
+                return cache[currency]
+    except RuntimeError:
+        cache = None
+
+    rate = FX_RATES.get(currency, 1.0)
+    try:
+        row = (ExchangeRate.query.filter_by(code=currency)
+               .order_by(ExchangeRate.rate_date.desc(), ExchangeRate.id.desc()).first())
+        if row and row.rate_to_base:
+            rate = row.rate_to_base
+    except Exception:
+        pass  # table not ready yet (e.g. pre-migration) — use the default
+
+    if cache is not None:
+        cache[currency] = rate
+    return rate
 
 
 def to_base(amount, currency):
     """Convert an amount into the base currency (EGP)."""
     if not amount:
         return 0.0
-    return amount * FX_RATES.get(currency or "EGP", 1.0)
+    return amount * get_fx_rate(currency)
 
 
 # --------------------------------------------------------------------------

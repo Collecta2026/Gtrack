@@ -361,13 +361,13 @@ class Cache:
 
 DEMO_USERS = [
     ("Zak Saleh", "zak@scientificgate.test", "admin"),
-    ("Amr El-Bagoury", "amr@scientificgate.test", "management"),
-    ("Mostafa Hassan", "procurement@scientificgate.test", "procurement"),
+    ("Amr El-Bagoury", "amr@scientificgate.test", "md"),
+    ("Mostafa Hassan", "procurement@scientificgate.test", "logistics"),
     ("Nourhan Adel", "logistics@scientificgate.test", "logistics"),
     ("Khaled Salah", "finance@scientificgate.test", "finance"),
     ("Sara Mahmoud", "sales1@scientificgate.test", "sales"),
     ("Omar Fathy", "sales2@scientificgate.test", "sales"),
-    ("Hesham Zaki", "warehouse@scientificgate.test", "warehouse"),
+    ("Hesham Zaki", "warehouse@scientificgate.test", "logistics"),
 ]
 
 DEMO_CUSTOMERS = [
@@ -862,7 +862,8 @@ def seed_demo_layer(shipments, customers, users):
         cost.due_date = anchor + timedelta(days=random.randint(-20, 30))
 
     # ---- exchange rates ----
-    for code, rate in [("EGP", 1.0), ("USD", 48.5), ("EUR", 52.0), ("CNY", 6.7), ("AED", 13.2)]:
+    for code, rate in [("EGP", 1.0), ("USD", 48.5), ("EUR", 52.0), ("CNY", 6.7),
+                       ("GBP", 61.0), ("AED", 13.2)]:
         db.session.add(ExchangeRate(code=code, rate_to_base=rate, rate_date=date.today()))
 
     db.session.commit()

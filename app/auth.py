@@ -13,32 +13,57 @@ bp = Blueprint("auth", __name__)
 
 # --------------------------------------------------------------------------
 # Role definitions — code, name, description, permissions
+#
+# This is the seed set only. The admin user matrix is not limited to these
+# five — new roles can be added at any time from Admin -> Roles, and each
+# one immediately gets its own column in the Authorisation matrix.
 # --------------------------------------------------------------------------
 
 ROLE_DEFINITIONS = [
-    ("admin", "Administrator",
-     "Full access; manages users, roles and all master data.", "*"),
-    ("procurement", "Procurement Officer",
-     "Raises and manages purchase orders and supplier invoices; maintains the supplier master.",
-     "view_all,edit_po,edit_supplier_invoice,edit_masters,comment,view_reports"),
-    ("logistics", "Logistics & Customs Coordinator",
-     "Creates and manages shipments, quotations and bookings; updates transit and customs "
-     "milestones; manages ACID/Form 4 and documents.",
-     "view_all,edit_shipment,edit_stage,edit_quotation,edit_document,edit_bank_reg,edit_masters,"
-     "comment,view_reports"),
-    ("finance", "Finance / Treasury",
+    ("admin", "Admin",
+     "Full access; manages users, roles, FX rates and all master data.", "*"),
+    ("logistics", "Logistics Manager",
+     "Raises and manages purchase orders and supplier invoices; creates and manages shipments, "
+     "quotations and bookings; updates transit and customs milestones; confirms warehouse receipt "
+     "and triggers installation handover; maintains the supplier and logistics master data.",
+     "view_all,edit_po,edit_supplier_invoice,edit_shipment,edit_stage,edit_quotation,edit_document,"
+     "edit_bank_reg,edit_asset,edit_masters,comment,view_reports"),
+    ("finance", "Finance",
      "Manages cost lines, payment status, bank registration and financial reports.",
      "view_all,edit_cost,edit_supplier_invoice,edit_bank_reg,comment,view_reports"),
-    ("sales", "Sales Account Manager",
+    ("sales", "Sales",
      "Read-only view of shipments and allocations for their own customers; receives milestone "
      "alerts; can add customer-facing comments.",
      "view_own_customers,edit_allocation,comment,view_reports"),
-    ("warehouse", "Warehouse Officer",
-     "Confirms warehouse receipt, records condition/discrepancies, and triggers installation handover.",
-     "view_all,edit_stage,edit_asset,comment"),
-    ("management", "Management (CEO / CFO)",
+    ("md", "MD",
      "Full read access and dashboards across all shipments; exportable reports.",
      "view_all,view_reports,comment,export"),
+]
+
+
+# --------------------------------------------------------------------------
+# Permission keys — the columns of the Authorisation matrix (Admin ->
+# Authorisation matrix). "*" (full access) is granted separately, per role,
+# and is not one of these individually-toggled keys.
+# --------------------------------------------------------------------------
+
+PERMISSIONS = [
+    ("view_all", "View all shipments"),
+    ("view_own_customers", "View own customers' shipments only"),
+    ("view_reports", "View reports & KPIs"),
+    ("export", "Export reports"),
+    ("edit_masters", "Edit master data"),
+    ("edit_po", "Edit purchase orders"),
+    ("edit_supplier_invoice", "Edit supplier invoices"),
+    ("edit_shipment", "Edit shipments"),
+    ("edit_stage", "Advance shipment stage"),
+    ("edit_quotation", "Edit freight quotations"),
+    ("edit_document", "Edit documents"),
+    ("edit_cost", "Edit cost lines"),
+    ("edit_bank_reg", "Edit Form 4 / bank registration"),
+    ("edit_asset", "Edit serials / assets"),
+    ("edit_allocation", "Edit customer allocations"),
+    ("comment", "Add comments"),
 ]
 
 

@@ -88,27 +88,14 @@ system — sign in as more than one to see the access model working.
 
 | Email | Role | What they see |
 |---|---|---|
-| `zak@scientificgate.test` | Administrator | Everything |
-| `amr@scientificgate.test` | Management (CEO/CFO) | Full read + dashboards, no admin |
-| `procurement@scientificgate.test` | Procurement Officer | POs, supplier invoices, suppliers |
-| `logistics@scientificgate.test` | Logistics & Customs | Shipments, stages, documents, Form 4 |
-| `finance@scientificgate.test` | Finance / Treasury | Costs, payments, bank registration |
-| `sales1@scientificgate.test` | Sales Account Manager | **Only their own customers' shipments** |
-| `sales2@scientificgate.test` | Sales Account Manager | A different customer portfolio |
-| `warehouse@scientificgate.test` | Warehouse Officer | Receipt, condition, serials |
-
-Sign in as `sales1` to see the point of the whole system: the account manager sees where
-each of their customers' machines is, and nothing else.
-
----|---|---|
-| `zak@scientificgate.test` | Administrator | Everything |
-| `amr@scientificgate.test` | Management (CEO/CFO) | Full read + dashboards, no admin |
-| `procurement@scientificgate.test` | Procurement Officer | POs, supplier invoices, suppliers |
-| `logistics@scientificgate.test` | Logistics & Customs | Shipments, stages, documents, Form 4 |
-| `finance@scientificgate.test` | Finance / Treasury | Costs, payments, bank registration |
-| `sales1@scientificgate.test` | Sales Account Manager | **Only their own customers' shipments** |
-| `sales2@scientificgate.test` | Sales Account Manager | A different customer portfolio |
-| `warehouse@scientificgate.test` | Warehouse Officer | Receipt, condition, serials |
+| `zak@scientificgate.test` | Admin | Everything, plus Admin -> Users, Roles, Authorisation matrix, FX rates |
+| `amr@scientificgate.test` | MD | Full read + dashboards, no admin |
+| `procurement@scientificgate.test` | Logistics Manager | POs, supplier invoices, suppliers, shipments, stages, Form 4, warehouse receipt |
+| `logistics@scientificgate.test` | Logistics Manager | Same as above |
+| `finance@scientificgate.test` | Finance | Costs, payments, bank registration |
+| `sales1@scientificgate.test` | Sales | **Only their own customers' shipments** |
+| `sales2@scientificgate.test` | Sales | A different customer portfolio |
+| `warehouse@scientificgate.test` | Logistics Manager | Receipt, condition, serials — folded into Logistics Manager |
 
 Sign in as `sales1` to see the point of the whole system: the account manager sees where
 each of their customers' machines is, and nothing else.
@@ -221,9 +208,17 @@ clearance times read as *unknown* rather than being counted as negative, so no a
 skewed, and the affected shipments are listed in Reports and flagged on their own page for
 correction at source.
 
-**Access & audit** — seven roles with per-permission scoping; sales users are restricted at
-the query level to shipments carrying their own customers' allocations; a full audit log
-capturing every field-level change with the user who made it.
+**Access & audit** — five roles out of the box (Logistics Manager, Finance, Sales, Admin,
+MD), each with per-permission scoping; an admin can add more at any time from **Admin ->
+Roles**, with no code change. What a role can actually see and do is set separately, on
+the **Authorisation matrix**, decoupled from the role list itself — a new role starts with
+no access until it is granted some there. Sales users are restricted at the query level to
+shipments carrying their own customers' allocations; a full audit log captures every
+field-level change with the user who made it.
+
+**Admin section** — a dedicated area (**Admin** in the sidebar) grouping Users, Roles, the
+Authorisation matrix and FX rates, alongside Master data, Notification rules and the Audit
+log. This is where role and access changes, and exchange-rate updates, actually happen.
 
 ---
 
@@ -263,6 +258,17 @@ translation later is a one-line change in `app/i18n.py`.
 
 ## What's new in this build
 
+**A five-role access model, extensible by the admin** — the role matrix is now Logistics
+Manager, Finance, Sales, Admin and MD (Procurement and Warehouse folded into Logistics
+Manager, since one person typically runs both in practice). An admin can add further roles
+at any time from **Admin -> Roles**, with no code change. What a role can access is set
+separately, on the new **Authorisation matrix** — a permission-by-permission grid, decoupled
+from the role list itself, so adding a role and deciding what it can do are two distinct
+steps. A new dedicated **Admin section** groups Users, Roles, the Authorisation matrix and
+FX rates in one place; FX rates moved from a hard-coded default to an admin-editable dated
+series, with the most recent rate for each currency used everywhere costs are converted to
+EGP.
+
 **The two-step supply route** — shipments can now run origin → Jebel Ali fulfilment centre
 → Cairo as well as straight from origin, with the two legs linked so a machine's whole
 journey, and its whole cost, stays in one place. A re-export leg routinely consolidates
@@ -297,7 +303,17 @@ verify a connection before deploying. Tested against real PostgreSQL, not only S
 
 ## Deployment
 
-**See `DEPLOY.md`** for the full step-by-step runbook: Neon database, GitHub repo, Render
+**The quickest route is `python golive.py`** (or double-click `golive.bat` on Windows).
+It creates the Neon database, builds and populates it, creates the GitHub repository,
+pushes the code, creates the Render service and attaches `gtrack.awspro.uk` — then checks
+the live site. It asks for three API tokens, never a password, and every step is
+idempotent, so an interrupted run resumes rather than duplicating.
+
+`golive.json` in this folder already holds the settings for Gtrack, so it runs without
+asking anything. `golive.py` is a general tool — the same file deploys Collecta, Voya or
+any other Python web app; drop it in that folder and it works the rest out itself.
+
+**See `DEPLOY.md`** if you would rather do it by hand — the full step-by-step runbook: Neon database, GitHub repo, Render
 blueprint, seeding production, and the `gtrack.awspro.uk` CNAME with SSL — including the
 gotchas that caught out the Collecta deployment.
 
@@ -339,8 +355,9 @@ This is a test build, so a few things are deliberately stubbed:
   `GTRACK_NOTIFICATIONS_LIVE=1` and add a mail backend in `notifications.py` to send for real.
 - **The rule sweep runs on demand**, via the button on the dashboard, rather than on a
   schedule. In production it would be a cron job or a Render scheduled task.
-- **Exchange rates are indicative and hard-coded** in `config.py`. The `ExchangeRate` table
-  exists for a dated series when you want live rates.
+- **Exchange rates are admin-editable** from **Admin -> FX rates**, which writes dated rows
+  to the `ExchangeRate` table; the most recent row for a currency is what conversions use.
+  Until an admin sets one, each currency falls back to an indicative default in `models.py`.
 - **Serial numbers, customers and allocations are demo data.** The spreadsheet has none, so
   these were generated to exercise the features — they are not real SGE records.
 - Costs migrated from the spreadsheet inherit its ambiguity: where the old sheet recorded a
@@ -358,6 +375,9 @@ This is a test build, so a few things are deliberately stubbed:
 
 ```
 gtrack/
+├── golive.py              # one-command go-live (Neon + GitHub + Render)
+├── golive.json            # Gtrack's deployment settings, no secrets
+├── golive.bat             # Windows double-click wrapper for the above
 ├── run.py                 # dev server
 ├── wsgi.py                # gunicorn entry point
 ├── seed.py                # spreadsheet migration + demo data
