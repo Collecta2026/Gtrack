@@ -1,0 +1,10 @@
+__pycache__/
+*.pyc
+instance/
+*.db
+.env
+.DS_Store
+venv/
+.env
+*.sqlite
+instance/uploads/
