@@ -24,10 +24,10 @@
           <td class="small"><strong>{{ t("Full access") }}</strong></td>
           {% for r in roles %}
             <td class="num">
-              {% if r.code != 'admin' %}
+              {% if r.code != system_role_code %}
                 <input type="hidden" name="role_ids" value="{{ r.id }}">
               {% endif %}
-              {% if r.code == 'admin' %}
+              {% if r.code == system_role_code %}
                 <span class="pill navy">{{ t("always") }}</span>
               {% else %}
                 <input type="checkbox" name="full__{{ r.id }}"
@@ -42,7 +42,7 @@
           <td class="small">{{ t(label) }}<div class="tiny muted">{{ key }}</div></td>
           {% for r in roles %}
             <td class="num">
-              {% if r.code == 'admin' %}
+              {% if r.code == system_role_code %}
                 <span class="pill navy">✓</span>
               {% else %}
                 <input type="checkbox" class="perm-{{ r.id }}" name="perm__{{ r.id }}__{{ key }}"
@@ -57,7 +57,7 @@
     </table>
   </div>
   <div class="card-body">
-    <p class="small muted">{{ t("Tick \"Full access\" to give a role everything, including permissions added later. Admin always has full access and manages this matrix.") }}</p>
+    <p class="small muted">{{ t("Tick \"Full access\" to give a role everything, including permissions added later. The CFO role always has full access and manages this matrix.") }}</p>
     <div class="btn-row"><button class="btn sm" type="submit">{{ t("Save authorisation matrix") }}</button></div>
   </div>
 </div>

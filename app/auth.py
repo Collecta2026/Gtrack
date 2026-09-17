@@ -14,20 +14,23 @@ bp = Blueprint("auth", __name__)
 # --------------------------------------------------------------------------
 # Role definitions — code, name, description, permissions
 #
-# This is the seed set only. The admin user matrix is not limited to these
-# five — new roles can be added at any time from Admin -> Roles, and each
-# one immediately gets its own column in the Authorisation matrix.
+# This is the seed set only, matching the company's actual six positions.
+# The admin user matrix is not limited to these — new roles can be added at
+# any time from Admin -> Roles, and each one immediately gets its own column
+# in the Authorisation matrix.
+#
+# The CFO is the one role that always keeps full access ("*") and cannot be
+# downgraded from the Authorisation matrix — it is the account that manages
+# users, roles, the matrix itself and FX rates, so it can never be locked out.
 # --------------------------------------------------------------------------
 
 ROLE_DEFINITIONS = [
-    ("admin", "Admin",
-     "Full access; manages users, roles, FX rates and all master data.", "*"),
-    ("logistics", "Logistics Manager",
-     "Raises and manages purchase orders and supplier invoices; creates and manages shipments, "
-     "quotations and bookings; updates transit and customs milestones; confirms warehouse receipt "
-     "and triggers installation handover; maintains the supplier and logistics master data.",
-     "view_all,edit_po,edit_supplier_invoice,edit_shipment,edit_stage,edit_quotation,edit_document,"
-     "edit_bank_reg,edit_asset,edit_masters,comment,view_reports"),
+    ("cfo", "CFO",
+     "Full access; manages users, roles, the authorisation matrix, FX rates and all master data.",
+     "*"),
+    ("md", "MD",
+     "Full read access and dashboards across all shipments; exportable reports.",
+     "view_all,view_reports,comment,export"),
     ("finance", "Finance",
      "Manages cost lines, payment status, bank registration and financial reports.",
      "view_all,edit_cost,edit_supplier_invoice,edit_bank_reg,comment,view_reports"),
@@ -35,10 +38,21 @@ ROLE_DEFINITIONS = [
      "Read-only view of shipments and allocations for their own customers; receives milestone "
      "alerts; can add customer-facing comments.",
      "view_own_customers,edit_allocation,comment,view_reports"),
-    ("md", "MD",
-     "Full read access and dashboards across all shipments; exportable reports.",
-     "view_all,view_reports,comment,export"),
+    ("sales_admin", "Sales Admin",
+     "Department oversight — sees and manages allocations across every customer, not just "
+     "their own; receives milestone alerts; runs and exports sales reports.",
+     "view_all,edit_allocation,comment,view_reports,export"),
+    ("logistics_admin", "Logistics Admin",
+     "Raises and manages purchase orders and supplier invoices; creates and manages shipments, "
+     "quotations and bookings; updates transit and customs milestones; confirms warehouse receipt "
+     "and triggers installation handover; maintains the supplier and logistics master data.",
+     "view_all,edit_po,edit_supplier_invoice,edit_shipment,edit_stage,edit_quotation,edit_document,"
+     "edit_bank_reg,edit_asset,edit_masters,comment,view_reports"),
 ]
+
+# The role that Admin -> Authorisation matrix always shows as locked at full
+# access, so the system can never be left with no one able to manage it.
+SYSTEM_ROLE_CODE = "cfo"
 
 
 # --------------------------------------------------------------------------
@@ -137,8 +151,7 @@ def login():
             return redirect(request.args.get("next") or url_for("dashboard.index"))
         flash(t("Incorrect email or password."), "error")
 
-    demo_users = User.query.order_by(User.id).all()
-    return render_template("login.html", demo_users=demo_users)
+    return render_template("login.html")
 
 
 @bp.route("/logout")

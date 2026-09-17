@@ -205,8 +205,9 @@ MENU_GUIDE = [
     ]),
     ("Admin: users, roles, authorisation, FX rates, audit", "admin", [
         ("Users", "Create accounts and assign each one a role."),
-        ("Roles", "The role matrix — Logistics Manager, Finance, Sales, Admin and MD out of the "
-                 "box. An admin can add more at any time from Admin -> Roles."),
+        ("Roles", "The role matrix — CFO, MD, Finance, Sales, Sales Admin and Logistics Admin "
+                 "out of the box, matching the company's actual positions. The CFO can add more "
+                 "at any time from Admin -> Roles."),
         ("Authorisation matrix", "Separate from the role list itself — a permission-by-permission "
                                  "grid of exactly what each role can see and do. New roles start "
                                  "with no access until this is set."),

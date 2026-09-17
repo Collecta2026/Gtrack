@@ -196,11 +196,11 @@ TRANSLATIONS.update(_d([
 
 # ---- roles ----
 TRANSLATIONS.update(_d([
-    ("Admin", "مسؤول النظام"),
-    ("Administrator", "مدير النظام"),
-    ("Logistics Manager", "مدير اللوجستيات"),
-    ("Finance", "المالية"),
+    ("CFO", "المدير المالي"),
     ("MD", "المدير العام"),
+    ("Finance", "المالية"),
+    ("Sales Admin", "مسؤول المبيعات"),
+    ("Logistics Admin", "مسؤول اللوجستيات"),
 ]))
 
 # ---- document types ----
@@ -1321,10 +1321,6 @@ TRANSLATIONS.update(_d([
     ("currencies, indicative unless set", "عملة، أسعارها إرشادية ما لم تُحدَّد"),
     ("Create accounts and assign each one a role.", "أنشئ الحسابات وحدد لكل منها دوراً."),
     ("Manage users", "إدارة المستخدمين"),
-    ("The role matrix — currently Logistics Manager, Finance, Sales, Admin and MD. "
-     "Add more whenever the business needs a new one.",
-     "مصفوفة الأدوار — تضم حالياً مدير اللوجستيات، المالية، المبيعات، الإدارة، والمدير العام. "
-     "يمكن إضافة المزيد كلما احتاج العمل إلى دور جديد."),
     ("Manage roles", "إدارة الأدوار"),
     ("Separate from the role list itself — exactly what each role can see and do, "
      "permission by permission.",
@@ -1366,9 +1362,9 @@ TRANSLATIONS.update(_d([
     ("Full access", "صلاحية كاملة"),
     ("always", "دائماً"),
     ("Tick \"Full access\" to give a role everything, including permissions added later. "
-     "Admin always has full access and manages this matrix.",
+     "The CFO role always has full access and manages this matrix.",
      "فعّل \"صلاحية كاملة\" لمنح الدور كل شيء، بما في ذلك الصلاحيات التي تُضاف لاحقاً. "
-     "تملك الإدارة دائماً صلاحية كاملة وهي من يدير هذه المصفوفة."),
+     "يملك دور المدير المالي دائماً صلاحية كاملة وهو من يدير هذه المصفوفة."),
     ("Save authorisation matrix", "حفظ مصفوفة الصلاحيات"),
     ("Authorisation matrix updated.", "تم تحديث مصفوفة الصلاحيات."),
 
@@ -1414,8 +1410,8 @@ TRANSLATIONS.update(_d([
 
 # ---- role descriptions (Admin -> Roles) ----
 TRANSLATIONS.update(_d([
-    ("Full access; manages users, roles, FX rates and all master data.",
-     "صلاحية كاملة؛ يدير المستخدمين والأدوار وأسعار الصرف وجميع البيانات الأساسية."),
+    ("Full access; manages users, roles, the authorisation matrix, FX rates and all master data.",
+     "صلاحية كاملة؛ يدير المستخدمين والأدوار ومصفوفة الصلاحيات وأسعار الصرف وجميع البيانات الأساسية."),
     ("Raises and manages purchase orders and supplier invoices; creates and manages shipments, "
      "quotations and bookings; updates transit and customs milestones; confirms warehouse receipt "
      "and triggers installation handover; maintains the supplier and logistics master data.",
@@ -1428,15 +1424,25 @@ TRANSLATIONS.update(_d([
      "alerts; can add customer-facing comments.",
      "عرض للقراءة فقط لشحنات وتخصيصات عملائهم؛ يتلقى تنبيهات المراحل؛ ويمكنه إضافة تعليقات "
      "موجهة للعملاء."),
+    ("Department oversight — sees and manages allocations across every customer, not just "
+     "their own; receives milestone alerts; runs and exports sales reports.",
+     "إشراف على القسم — يرى ويدير التخصيصات عبر جميع العملاء، وليس عملاءه فقط؛ يتلقى تنبيهات "
+     "المراحل؛ ويُعدّ تقارير المبيعات ويصدّرها."),
     ("Full read access and dashboards across all shipments; exportable reports.",
      "صلاحية قراءة كاملة ولوحات معلومات عبر جميع الشحنات؛ وتقارير قابلة للتصدير."),
 
     ("Admin: users, roles, authorisation, FX rates, audit",
      "الإدارة: المستخدمون والأدوار والصلاحيات وأسعار الصرف والتدقيق"),
-    ("The role matrix — Logistics Manager, Finance, Sales, Admin and MD out of the "
-     "box. An admin can add more at any time from Admin -> Roles.",
-     "مصفوفة الأدوار — تضم افتراضياً مدير اللوجستيات والمالية والمبيعات والإدارة والمدير العام. "
-     "ويمكن لأحد المسؤولين إضافة المزيد في أي وقت من الإدارة -> الأدوار."),
+    ("The role matrix — CFO, MD, Finance, Sales, Sales Admin and Logistics Admin "
+     "out of the box, matching the company's actual positions. The CFO can add more "
+     "at any time from Admin -> Roles.",
+     "مصفوفة الأدوار — تضم افتراضياً المدير المالي والمدير العام والمالية والمبيعات ومسؤول "
+     "المبيعات ومسؤول اللوجستيات، بما يطابق مسميات الشركة الفعلية. ويمكن للمدير المالي إضافة "
+     "المزيد في أي وقت من الإدارة -> الأدوار."),
+    ("The role matrix — currently CFO, MD, Finance, Sales, Sales Admin and Logistics Admin. "
+     "Add more whenever the business needs a new one.",
+     "مصفوفة الأدوار — تضم حالياً المدير المالي والمدير العام والمالية والمبيعات ومسؤول "
+     "المبيعات ومسؤول اللوجستيات. أضف المزيد كلما احتاج العمل إلى دور جديد."),
     ("Separate from the role list itself — a permission-by-permission "
      "grid of exactly what each role can see and do. New roles start "
      "with no access until this is set.",

@@ -6,7 +6,7 @@ from flask_login import login_required, current_user
 
 from ..models import (db, User, Role, NotificationRule, NotificationLog, AuditLog, Stage,
                       ExchangeRate, FX_RATES)
-from ..auth import permission_required, PERMISSIONS
+from ..auth import permission_required, PERMISSIONS, SYSTEM_ROLE_CODE
 from ..exports import export_response
 from ..i18n import t
 
@@ -103,8 +103,8 @@ def authorisation():
         # didn't mention untouched, rather than silently stripping their access.
         submitted_ids = {v for v in request.form.getlist("role_ids") if v.isdigit()}
         for role in roles_list:
-            if role.code == "admin":
-                continue  # Admin always keeps full access — it manages this matrix.
+            if role.code == SYSTEM_ROLE_CODE:
+                continue  # This role always keeps full access — it manages this matrix.
             if str(role.id) not in submitted_ids:
                 continue
             if request.form.get(f"full__{role.id}"):
@@ -117,7 +117,8 @@ def authorisation():
         flash(t("Authorisation matrix updated."), "success")
         return redirect(url_for("admin.authorisation"))
 
-    return render_template("admin/authorisation.html", roles=roles_list, permissions=PERMISSIONS)
+    return render_template("admin/authorisation.html", roles=roles_list, permissions=PERMISSIONS,
+                           system_role_code=SYSTEM_ROLE_CODE)
 
 
 @bp.route("/fx-rates", methods=["GET", "POST"])

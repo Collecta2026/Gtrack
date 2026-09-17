@@ -17,11 +17,11 @@ from .models import (db, Shipment, PurchaseOrder, CostLine, User, Role,
 
 DEFAULT_RULES = [
     dict(name="PO overdue against expected ready date", trigger_type="po_overdue",
-         trigger_value="0", audience_role="logistics", channel="email",
+         trigger_value="0", audience_role="logistics_admin", channel="email",
          template="Purchase order {po_number} to {supplier} passed its expected ready date "
                   "({expected_ready_date}). Chase the supplier before it becomes a shipment delay."),
     dict(name="Quotation not selected after order confirmation", trigger_type="quote_pending",
-         trigger_value="5", audience_role="logistics", channel="email",
+         trigger_value="5", audience_role="logistics_admin", channel="email",
          template="Shipment {reference_no} has been at '{stage}' for {days} days with no freight "
                   "quotation selected. Booking is at risk of delay."),
     dict(name="ETA within 7 days", trigger_type="eta_within_days", trigger_value="7",
@@ -33,15 +33,15 @@ DEFAULT_RULES = [
          template="Shipment {reference_no} ({brand}) has cleared customs. "
                   "Customers awaiting installation: {customers}. Contact them to arrange scheduling."),
     dict(name="Received into warehouse", trigger_type="stage_reached",
-         trigger_value=Stage.WAREHOUSE, audience_role="logistics", channel="in_app",
+         trigger_value=Stage.WAREHOUSE, audience_role="logistics_admin", channel="in_app",
          template="Shipment {reference_no} has been received into the warehouse. "
                   "Confirm condition and serial numbers, then hand over for installation."),
     dict(name="Shipment delayed past ETA", trigger_type="delay", trigger_value="0",
-         audience_role="logistics", channel="email",
+         audience_role="logistics_admin", channel="email",
          template="Shipment {reference_no} has passed its ETA of {eta} without arriving. "
                   "Current stage: {stage}. Escalate with {forwarder}."),
     dict(name="Required document missing", trigger_type="missing_document", trigger_value="3",
-         audience_role="logistics", channel="email",
+         audience_role="logistics_admin", channel="email",
          template="Shipment {reference_no} is missing required documents: {missing}. "
                   "Current stage: {stage}."),
     dict(name="Cost line overdue", trigger_type="payment_overdue", trigger_value="0",
