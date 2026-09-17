@@ -1,0 +1,41 @@
+{% extends "base.html" %}
+{% block heading %}{{ t("Cost breakdown") }}{% endblock %}
+{% block crumb %}{{ t("Reports & KPIs") }}{% endblock %}
+
+{% block content %}
+
+{% include "reports/_subnav.html" %}
+
+<div class="tiles">
+  <div class="tile">
+    <div class="lab">{{ t("Total logged cost") }}</div>
+    <div class="val">{{ total_cost | money }}</div>
+    <div class="sub">{{ base_currency }}</div>
+  </div>
+  <div class="tile">
+    <div class="lab">{{ t("Cost per shipment") }}</div>
+    <div class="val">{{ cost_per_shipment | money }}</div>
+    <div class="sub">{{ base_currency }} average</div>
+  </div>
+  <div class="tile">
+    <div class="lab">{{ t("Cost per kg") }}</div>
+    <div class="val">{{ cost_per_kg | money2 if cost_per_kg else '—' }}</div>
+    <div class="sub">{{ base_currency }}</div>
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-head"><h2>{{ t("Cost by category") }}</h2></div>
+  <div class="card-body">
+    {% set maxv = cost_rows | map(attribute=1) | max %}
+    {% for label, value in cost_rows %}
+      <div class="bar-row">
+        <div class="bl">{{ label }}</div>
+        <div class="bar-track"><div class="bar-fill" style="width:{{ (value / maxv * 100) if maxv else 0 }}%"></div></div>
+        <div class="bv">{{ value | money }}</div>
+      </div>
+    {% else %}<div class="empty">{{ t("No costs recorded.") }}</div>{% endfor %}
+  </div>
+</div>
+
+{% endblock %}

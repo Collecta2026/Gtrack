@@ -19,22 +19,99 @@ def _avg(values):
     return round(mean(values), 1) if values else None
 
 
+def _shipments():
+    shipments = visible_shipments(Shipment.query).all()
+    open_shipments = [s for s in shipments if s.is_open]
+    return shipments, open_shipments
+
+
+# The various available reports, as a submenu — every reports/* page shows this
+# list so moving between reports doesn't mean going back to the hub each time.
+# (label is resolved through t() in the template, not here, so it stays translated.)
+REPORT_PAGES = [
+    ("reports.index", "Overview"),
+    ("reports.pipeline", "Pipeline & ageing"),
+    ("reports.timing", "Timing & routes"),
+    ("reports.cost", "Cost breakdown"),
+    ("reports.brands", "Brands & suppliers"),
+    ("reports.equipment", "Equipment & value"),
+    ("reports.exceptions", "Exceptions"),
+]
+
+
+@bp.context_processor
+def _inject_report_menu():
+    return dict(report_pages=REPORT_PAGES)
+
+
 @bp.route("/")
 @permission_required("view_reports")
 def index():
-    shipments = visible_shipments(Shipment.query).all()
-    open_shipments = [s for s in shipments if s.is_open]
+    """Reports hub — the at-a-glance KPI tiles, plus the submenu of the
+    individual reports (each is its own page, reached from here or from the
+    submenu shown on every report page)."""
+    shipments, open_shipments = _shipments()
 
-    # --- pipeline by stage ---
-    pipeline = []
+    transit_times = [s.transit_days for s in shipments if s.transit_days is not None]
+    clearance_times = [s.clearance_days for s in shipments if s.clearance_days is not None]
+
+    arrived = [s for s in shipments if s.actual_arrival and s.eta]
+    on_time = sum(1 for s in arrived if s.actual_arrival <= s.eta)
+    on_time_pct = round(100 * on_time / len(arrived)) if arrived else None
+
+    cost_by_type = defaultdict(float)
+    for c in CostLine.query.all():
+        cost_by_type[c.type_label] += (c.amount_base or 0)
+    total_cost = sum(cost_by_type.values())
+    cost_per_shipment = round(total_cost / len(shipments)) if shipments else 0
+    weights = [s.gross_weight_kg for s in shipments if s.gross_weight_kg]
+    cost_per_kg = round(total_cost / sum(weights), 2) if weights else None
+
+    consolidated = sum(1 for s in shipments if s.is_consolidated)
+    incomplete_docs = sum(1 for s in open_shipments if s.missing_documents)
+    anomalies = sum(1 for s in shipments if s.date_anomalies)
+
+    stats = dict(
+        total=len(shipments), open=len(open_shipments),
+        avg_transit=_avg(transit_times), avg_clearance=_avg(clearance_times),
+        on_time_pct=on_time_pct, arrived_count=len(arrived),
+        total_cost=total_cost, cost_per_shipment=cost_per_shipment, cost_per_kg=cost_per_kg,
+        delayed=sum(1 for s in open_shipments if s.is_delayed),
+        incomplete_docs=incomplete_docs,
+        consolidated=consolidated,
+        hub_legs=sum(1 for s in shipments if s.is_hub_leg),
+        anomalies=anomalies,
+    )
+
+    return render_template("reports/index.html", stats=stats)
+
+
+@bp.route("/pipeline")
+@permission_required("view_reports")
+def pipeline():
+    """Where open shipments sit right now, and which ones have been sitting
+    the longest in their current stage."""
+    shipments, open_shipments = _shipments()
+
+    pipeline_rows = []
     for code in Stage.ORDER:
         count = sum(1 for s in open_shipments if s.current_stage == code)
         if count:
-            pipeline.append(dict(label=Stage.label(code), count=count))
+            pipeline_rows.append(dict(label=Stage.label(code), count=count))
 
-    # --- timing ---
-    transit_times = [s.transit_days for s in shipments if s.transit_days is not None]
-    clearance_times = [s.clearance_days for s in shipments if s.clearance_days is not None]
+    ageing = sorted([s for s in open_shipments if s.days_in_stage > 7],
+                    key=lambda s: -s.days_in_stage)[:15]
+
+    return render_template("reports/pipeline.html", pipeline=pipeline_rows, ageing=ageing,
+                           open_count=len(open_shipments))
+
+
+@bp.route("/timing")
+@permission_required("view_reports")
+def timing():
+    """How long shipments actually take — by transport mode, by lane, and by
+    route (direct versus the two-step route through the fulfilment centre)."""
+    shipments, open_shipments = _shipments()
 
     by_mode = defaultdict(list)
     for s in shipments:
@@ -50,52 +127,9 @@ def index():
     lane_stats = sorted([dict(lane=k, avg=_avg(v), count=len(v)) for k, v in by_lane.items()],
                         key=lambda r: -r["count"])[:10]
 
-    # --- on-time performance ---
-    arrived = [s for s in shipments if s.actual_arrival and s.eta]
-    on_time = sum(1 for s in arrived if s.actual_arrival <= s.eta)
-    on_time_pct = round(100 * on_time / len(arrived)) if arrived else None
-
-    # --- cost ---
-    cost_by_type = defaultdict(float)
-    for c in CostLine.query.all():
-        cost_by_type[c.type_label] += (c.amount_base or 0)
-    cost_rows = sorted(cost_by_type.items(), key=lambda kv: -kv[1])
-    total_cost = sum(cost_by_type.values())
-
-    cost_per_shipment = round(total_cost / len(shipments)) if shipments else 0
-    weights = [s.gross_weight_kg for s in shipments if s.gross_weight_kg]
-    cost_per_kg = round(total_cost / sum(weights), 2) if weights else None
-
-    # --- by brand ---
-    brand_stats = []
-    for brand in Brand.query.all():
-        bs = [s for s in shipments if s.brand_id == brand.id]
-        if not bs:
-            continue
-        brand_costs = sum(s.total_cost for s in bs)
-        brand_stats.append(dict(brand=brand.brand_name, shipments=len(bs),
-                                value=sum(s.total_value_base for s in bs), cost=brand_costs,
-                                avg_transit=_avg([s.transit_days for s in bs])))
-    brand_stats.sort(key=lambda r: -r["shipments"])
-
-    # --- supplier performance ---
-    supplier_stats = []
-    for sup in Supplier.query.all():
-        ss = [s for s in shipments if s.supplier_id == sup.id]
-        if not ss:
-            continue
-        delayed = sum(1 for s in ss if s.is_delayed)
-        supplier_stats.append(dict(
-            supplier=sup.name, shipments=len(ss), delayed=delayed,
-            avg_transit=_avg([s.transit_days for s in ss]),
-            lead_time=sup.lead_time_days))
-    supplier_stats.sort(key=lambda r: -r["shipments"])
-    supplier_stats = supplier_stats[:12]
-
-    # --- routing: direct versus the two-step route through the fulfilment centre ---
-    # Worth watching, because the hub route buys flexibility but adds a second set of
-    # freight, handling and clearance charges. This is the comparison that says whether
-    # it is paying for itself on a given lane.
+    # Direct versus the two-step route through the fulfilment centre — the hub route
+    # buys flexibility but adds a second set of freight, handling and clearance
+    # charges, so this is the comparison that says whether it is paying for itself.
     route_stats = []
     for code, label in ROUTE_TYPES:
         rs = [s for s in shipments if s.route_type == code]
@@ -112,57 +146,105 @@ def index():
             avg_transit=_avg([s.transit_days for s in rs]),
             avg_clearance=_avg([s.clearance_days for s in rs]),
         ))
+    hub_legs = sum(1 for s in shipments if s.is_hub_leg)
+    consolidated = sum(1 for s in shipments if s.is_consolidated)
 
-    # --- consolidation: how much a re-export leg is actually pooling ---
-    consolidated = [s for s in shipments if s.is_consolidated]
+    return render_template("reports/timing.html", mode_stats=mode_stats, lane_stats=lane_stats,
+                           route_stats=route_stats, hub_legs=hub_legs, consolidated=consolidated)
 
-    # --- data quality ---
-    # Rows migrated from the spreadsheet sometimes carry dates that cannot both be
-    # true (departure after arrival, release before arrival). Those are excluded from
-    # the timing averages above, so they are listed here instead of being silently
-    # dropped — the fix belongs in the record, not in the report.
-    anomalies = [dict(shipment=s, problems=s.date_anomalies)
-                 for s in shipments if s.date_anomalies]
 
-    # --- ageing ---
-    ageing = sorted([s for s in open_shipments if s.days_in_stage > 7],
-                    key=lambda s: -s.days_in_stage)[:15]
+@bp.route("/cost")
+@permission_required("view_reports")
+def cost():
+    """Logged cost, broken down by cost category."""
+    shipments, _ = _shipments()
 
-    # --- document completeness ---
-    incomplete = [s for s in open_shipments if s.missing_documents]
+    cost_by_type = defaultdict(float)
+    for c in CostLine.query.all():
+        cost_by_type[c.type_label] += (c.amount_base or 0)
+    cost_rows = sorted(cost_by_type.items(), key=lambda kv: -kv[1])
+    total_cost = sum(cost_by_type.values())
+    cost_per_shipment = round(total_cost / len(shipments)) if shipments else 0
+    weights = [s.gross_weight_kg for s in shipments if s.gross_weight_kg]
+    cost_per_kg = round(total_cost / sum(weights), 2) if weights else None
 
-    # --- allocation ---
-    all_assets = Asset.query.all()
+    return render_template("reports/cost.html", cost_rows=cost_rows, total_cost=total_cost,
+                           cost_per_shipment=cost_per_shipment, cost_per_kg=cost_per_kg)
+
+
+@bp.route("/brands")
+@permission_required("view_reports")
+def brands():
+    """Volume, value and transit performance by brand, and by supplier."""
+    shipments, _ = _shipments()
+
+    brand_stats = []
+    for brand in Brand.query.all():
+        bs = [s for s in shipments if s.brand_id == brand.id]
+        if not bs:
+            continue
+        brand_costs = sum(s.total_cost for s in bs)
+        brand_stats.append(dict(brand=brand.brand_name, shipments=len(bs),
+                                value=sum(s.total_value_base for s in bs), cost=brand_costs,
+                                avg_transit=_avg([s.transit_days for s in bs])))
+    brand_stats.sort(key=lambda r: -r["shipments"])
+
+    supplier_stats = []
+    for sup in Supplier.query.all():
+        ss = [s for s in shipments if s.supplier_id == sup.id]
+        if not ss:
+            continue
+        delayed = sum(1 for s in ss if s.is_delayed)
+        supplier_stats.append(dict(
+            supplier=sup.name, shipments=len(ss), delayed=delayed,
+            avg_transit=_avg([s.transit_days for s in ss]),
+            lead_time=sup.lead_time_days))
+    supplier_stats.sort(key=lambda r: -r["shipments"])
+    supplier_stats = supplier_stats[:12]
+
+    return render_template("reports/brands.html", brand_stats=brand_stats[:12],
+                           supplier_stats=supplier_stats)
+
+
+@bp.route("/equipment")
+@permission_required("view_reports")
+def equipment():
+    """Serialised equipment by status, and the value of goods currently in
+    transit, by currency."""
+    _, open_shipments = _shipments()
+
     asset_status_counts = defaultdict(int)
-    for a in all_assets:
+    for a in Asset.query.all():
         asset_status_counts[a.status_label] += 1
 
-    # --- value in transit by currency ---
     value_by_currency = defaultdict(float)
     for s in open_shipments:
         for item in s.items:
             value_by_currency[item.currency or "USD"] += item.line_value
 
-    stats = dict(
-        total=len(shipments), open=len(open_shipments),
-        avg_transit=_avg(transit_times), avg_clearance=_avg(clearance_times),
-        on_time_pct=on_time_pct, arrived_count=len(arrived),
-        total_cost=total_cost, cost_per_shipment=cost_per_shipment, cost_per_kg=cost_per_kg,
-        delayed=sum(1 for s in open_shipments if s.is_delayed),
-        incomplete_docs=len(incomplete),
-        consolidated=len(consolidated),
-        hub_legs=sum(1 for s in shipments if s.is_hub_leg),
-        anomalies=len(anomalies),
-    )
-
-    return render_template("reports/index.html", stats=stats, pipeline=pipeline,
-                           mode_stats=mode_stats, lane_stats=lane_stats,
-                           cost_rows=cost_rows, brand_stats=brand_stats,
-                           supplier_stats=supplier_stats, ageing=ageing,
-                           route_stats=route_stats, anomalies=anomalies[:20],
-                           incomplete=incomplete[:10],
+    return render_template("reports/equipment.html",
                            asset_status_counts=dict(asset_status_counts),
                            value_by_currency=dict(value_by_currency))
+
+
+@bp.route("/exceptions")
+@permission_required("view_reports")
+def exceptions():
+    """Things that need attention: shipments missing required documents, and
+    rows with contradictory dates."""
+    shipments, open_shipments = _shipments()
+
+    incomplete = [s for s in open_shipments if s.missing_documents]
+
+    # Rows migrated from the spreadsheet sometimes carry dates that cannot both be
+    # true (departure after arrival, release before arrival). Those are excluded from
+    # the timing averages elsewhere, so they are listed here instead of being silently
+    # dropped — the fix belongs in the record, not in the report.
+    anomalies = [dict(shipment=s, problems=s.date_anomalies)
+                 for s in shipments if s.date_anomalies]
+
+    return render_template("reports/exceptions.html", incomplete=incomplete[:10],
+                           anomalies=anomalies[:20])
 
 
 @bp.route("/export")

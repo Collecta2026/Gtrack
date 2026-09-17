@@ -1,0 +1,5 @@
+<div class="subnav">
+  {% for endpoint, label in report_pages %}
+    <a class="{{ 'active' if (request.endpoint or '') == endpoint }}" href="{{ url_for(endpoint) }}">{{ t(label) }}</a>
+  {% endfor %}
+</div>

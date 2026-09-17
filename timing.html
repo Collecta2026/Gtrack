@@ -1,0 +1,85 @@
+{% extends "base.html" %}
+{% block heading %}{{ t("Timing & routes") }}{% endblock %}
+{% block crumb %}{{ t("Reports & KPIs") }}{% endblock %}
+
+{% block content %}
+
+{% include "reports/_subnav.html" %}
+
+<div class="grid c2" style="align-items:start">
+
+  <div class="card">
+    <div class="card-head"><h2>{{ t("Transit time by mode") }}</h2></div>
+    {% if mode_stats %}
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>{{ t("Mode") }}</th><th class="num">{{ t("Avg days") }}</th><th class="num">{{ t("Shipments") }}</th></tr></thead>
+        <tbody>
+        {% for m in mode_stats %}
+          <tr><td class="small">{{ m.mode }}</td><td class="num">{{ m.avg }}</td><td class="num">{{ m.count }}</td></tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}<div class="empty">{{ t("Not enough completed journeys yet.") }}</div>{% endif %}
+  </div>
+
+  <div class="card">
+    <div class="card-head"><h2>{{ t("Busiest lanes") }}</h2></div>
+    {% if lane_stats %}
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>{{ t("Lane") }}</th><th class="num">{{ t("Avg days") }}</th><th class="num">{{ t("Shipments") }}</th></tr></thead>
+        <tbody>
+        {% for l in lane_stats %}
+          <tr><td class="small">{{ l.lane }}</td><td class="num">{{ l.avg }}</td><td class="num">{{ l.count }}</td></tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}<div class="empty">{{ t("No lane data yet.") }}</div>{% endif %}
+  </div>
+
+  <div class="card" style="grid-column:1 / -1">
+    <div class="card-head">
+      <h2>{{ t("Direct versus the fulfilment centre route") }}</h2>
+      <span class="tiny muted">
+        {{ hub_legs }} {{ t("hub legs") }}
+        {% if consolidated %} · {{ consolidated }} {{ t("consolidated shipments") }}{% endif %}
+      </span>
+    </div>
+    {% if route_stats %}
+    <div class="table-wrap">
+      <table>
+        <thead><tr>
+          <th>{{ t("Route type") }}</th><th class="num">{{ t("Shipments") }}</th>
+          <th class="num">{{ t("Goods value") }}</th><th class="num">{{ t("Costs") }}</th>
+          <th class="num">{{ t("Costs as % of goods") }}</th><th class="num">{{ t("Cost per kg") }}</th>
+          <th class="num">{{ t("Avg transit") }}</th><th class="num">{{ t("Avg clearance") }}</th>
+        </tr></thead>
+        <tbody>
+        {% for r in route_stats %}
+          <tr>
+            <td class="small"><strong>{{ r.label }}</strong></td>
+            <td class="num">{{ r.count }}</td>
+            <td class="num small">{{ r.value | money }}</td>
+            <td class="num small">{{ r.cost | money }}</td>
+            <td class="num small">{% if r.cost_pct is not none %}{{ '%.1f' | format(r.cost_pct) }}%{% else %}—{% endif %}</td>
+            <td class="num small">{% if r.cost_per_kg is not none %}{{ r.cost_per_kg | money2 }}{% else %}—{% endif %}</td>
+            <td class="num small">{{ (r.avg_transit ~ 'd') if r.avg_transit is not none else '—' }}</td>
+            <td class="num small">{{ (r.avg_clearance ~ 'd') if r.avg_clearance is not none else '—' }}</td>
+          </tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    <div class="card-body tight">
+      <div class="tiny muted">
+        {{ t("The two-step route through the free zone buys flexibility but pays freight, handling and clearance twice. Comparing cost as a share of goods value, and cost per kilogram, is what shows whether it is earning its keep.") }}
+      </div>
+    </div>
+    {% else %}<div class="empty">{{ t("No routing data yet.") }}</div>{% endif %}
+  </div>
+
+</div>
+{% endblock %}

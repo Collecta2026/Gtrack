@@ -13,7 +13,7 @@ from app.auth import PERMISSIONS
 from app.models import (db, Shipment, ShipmentItem, Asset, Allocation, PurchaseOrder,
                         CostLine, Customer, Carrier, Supplier, User, NotificationLog,
                         AuditLog, Stage, Location, CustomsBroker, AssetMovement,
-                        BankRegistration, Role, to_base)
+                        BankRegistration, Role, to_base, Comment)
 
 app = create_app()
 app.config["WTF_CSRF_ENABLED"] = False
@@ -101,7 +101,9 @@ with app.test_client() as c:
         "/equipment/", f"/equipment/{asset_id}", "/equipment/allocations", "/equipment/customers",
         "/master-data/", "/master-data/suppliers", "/master-data/brands", "/master-data/carriers",
         "/master-data/consignees", "/master-data/customers", "/master-data/banks",
-        "/reports/", "/admin/users", "/admin/roles", "/admin/notification-rules",
+        "/reports/", "/reports/pipeline", "/reports/timing", "/reports/cost",
+        "/reports/brands", "/reports/equipment", "/reports/exceptions",
+        "/admin/users", "/admin/roles", "/admin/notification-rules",
         "/admin/notifications", "/admin/audit",
         "/help/", "/search/", f"/shipments/{shipment_id}/statement",
     ]:
@@ -455,6 +457,134 @@ with app.test_client() as c:
     get(c, "/admin/authorisation", label="CFO: Authorisation matrix page")
     get(c, "/admin/fx-rates", label="CFO: FX rates page")
 
+    # Editing an existing user (name/phone only, password left blank) must not touch
+    # their password — this is the fix for "I can't change my Gtrack login": the Users
+    # page previously had no edit affordance at all, only "Add a user".
+    with app.app_context():
+        edit_user = User.query.filter_by(email="sales1@scientificgate.test").first()
+        edit_user_id = edit_user.id
+        edit_role_id = edit_user.role_id
+    resp = c.post("/admin/users",
+                  data={"id": edit_user_id, "name": "Sara Mahmoud (Smoke Edit)",
+                        "email": "sales1@scientificgate.test", "role_id": edit_role_id,
+                        "phone": "0100000000", "is_active": "1", "password": ""},
+                  follow_redirects=True)
+    check("POST edit user (no password change)", resp.status_code == 200)
+    with app.app_context():
+        u = db.session.get(User, edit_user_id)
+        check("edited user's name updated", u.name == "Sara Mahmoud (Smoke Edit)")
+        check("edited user still has their old password", u.check_password("demo1234"))
+
+    # Now actually change the password from the same edit form.
+    resp = c.post("/admin/users",
+                  data={"id": edit_user_id, "name": "Sara Mahmoud (Smoke Edit)",
+                        "email": "sales1@scientificgate.test", "role_id": edit_role_id,
+                        "phone": "0100000000", "is_active": "1", "password": f"smoke{RUN}"},
+                  follow_redirects=True)
+    check("POST edit user (change password)", resp.status_code == 200)
+    with app.app_context():
+        u = db.session.get(User, edit_user_id)
+        check("new password takes effect", u.check_password(f"smoke{RUN}"))
+        check("old password no longer works", not u.check_password("demo1234"))
+    with app.test_client() as c2:
+        r = c2.post("/login", data={"email": "sales1@scientificgate.test", "password": f"smoke{RUN}"},
+                    follow_redirects=True)
+        check("can sign in with the newly-set password", b"Incorrect email or password" not in r.data)
+
+    # Put this demo account back the way the rest of the suite (and a re-run) expects
+    # it — name, phone and password all restored to their seeded values.
+    resp = c.post("/admin/users",
+                  data={"id": edit_user_id, "name": "Sara Mahmoud",
+                        "email": "sales1@scientificgate.test", "role_id": edit_role_id,
+                        "phone": "", "is_active": "1", "password": "demo1234"},
+                  follow_redirects=True)
+    check("POST restore user to seeded state", resp.status_code == 200)
+    with app.app_context():
+        u = db.session.get(User, edit_user_id)
+        check("user restored to seeded name and password",
+              u.name == "Sara Mahmoud" and u.check_password("demo1234"))
+
+    # --- Delete user: a fresh account with no history can actually be deleted ---
+    with app.app_context():
+        cfo_role_id = Role.query.filter_by(code="cfo").first().id
+        sales_role_id = Role.query.filter_by(code="sales").first().id
+    resp = c.post("/admin/users",
+                  data={"name": f"Smoke Temp User {RUN}", "email": f"smoketemp{RUN.lower()}@scientificgate.test",
+                        "role_id": sales_role_id, "is_active": "1", "password": "demo1234"},
+                  follow_redirects=True)
+    check("POST add temp user for delete test", resp.status_code == 200)
+    with app.app_context():
+        temp_user = User.query.filter_by(email=f"smoketemp{RUN.lower()}@scientificgate.test").first()
+        check("temp user created for delete test", temp_user is not None)
+        temp_user_id = temp_user.id
+
+    resp = c.post(f"/admin/users/{temp_user_id}/delete", follow_redirects=True)
+    check("POST delete a history-free user", resp.status_code == 200)
+    with app.app_context():
+        check("history-free user is actually gone", db.session.get(User, temp_user_id) is None)
+
+    # --- A user with activity on record can't be hard-deleted ---
+    # Built deterministically (a comment on a real shipment) rather than relying on
+    # which seeded users happen to have picked up notifications/allocations.
+    resp = c.post("/admin/users",
+                  data={"name": f"Smoke History User {RUN}", "email": f"smokehist{RUN.lower()}@scientificgate.test",
+                        "role_id": sales_role_id, "is_active": "1", "password": "demo1234"},
+                  follow_redirects=True)
+    with app.app_context():
+        hist_user = User.query.filter_by(email=f"smokehist{RUN.lower()}@scientificgate.test").first()
+        hist_user_id = hist_user.id
+        db.session.add(Comment(shipment_id=shipment_id, user_id=hist_user_id, body="smoke test comment"))
+        db.session.commit()
+
+    resp = c.post(f"/admin/users/{hist_user_id}/delete", follow_redirects=True)
+    check("POST delete a user with history returns 200 (blocked, not crashed)",
+          resp.status_code == 200)
+    check("blocked-delete explains why (activity on record)",
+          "activity on record".encode() in resp.data)
+    with app.app_context():
+        check("user with history is NOT deleted", db.session.get(User, hist_user_id) is not None)
+        # Clean up: remove the comment, then the delete should succeed.
+        Comment.query.filter_by(user_id=hist_user_id).delete()
+        db.session.commit()
+    resp = c.post(f"/admin/users/{hist_user_id}/delete", follow_redirects=True)
+    with app.app_context():
+        check("history user cleaned up once their history is gone",
+              db.session.get(User, hist_user_id) is None)
+
+    # --- Can't delete your own account while signed in as it ---
+    with app.app_context():
+        zak_id = User.query.filter_by(email="zak@scientificgate.test").first().id
+    resp = c.post(f"/admin/users/{zak_id}/delete", follow_redirects=True)
+    check("self-delete blocked, not crashed", resp.status_code == 200)
+    with app.app_context():
+        check("own account survives a self-delete attempt", db.session.get(User, zak_id) is not None)
+
+    # --- Can't delete the last active user with full access ---
+    resp = c.post("/admin/users",
+                  data={"name": f"Smoke Temp CFO {RUN}", "email": f"smokecfo{RUN.lower()}@scientificgate.test",
+                        "role_id": cfo_role_id, "is_active": "1", "password": "demo1234"},
+                  follow_redirects=True)
+    with app.app_context():
+        temp_cfo = User.query.filter_by(email=f"smokecfo{RUN.lower()}@scientificgate.test").first()
+        temp_cfo_id = temp_cfo.id
+        # Take zak out of the running so temp_cfo is the *only* active full-access user.
+        zak = db.session.get(User, zak_id)
+        zak.is_active_flag = False
+        db.session.commit()
+
+    resp = c.post(f"/admin/users/{temp_cfo_id}/delete", follow_redirects=True)
+    check("deleting the last active full-access user is blocked", resp.status_code == 200)
+    with app.app_context():
+        check("last full-access user survives", db.session.get(User, temp_cfo_id) is not None)
+        # Restore zak and clean up the temp CFO now that it's safe to remove.
+        zak = db.session.get(User, zak_id)
+        zak.is_active_flag = True
+        db.session.commit()
+    resp = c.post(f"/admin/users/{temp_cfo_id}/delete", follow_redirects=True)
+    with app.app_context():
+        check("temp CFO cleaned up once zak is active again",
+              db.session.get(User, temp_cfo_id) is None)
+
     # The CFO can add a new role — the matrix is not capped at the six defaults.
     resp = c.post("/admin/roles",
                   data={"role_name": f"Smoke Test Role {RUN}", "description": "temp"},
@@ -742,7 +872,7 @@ with app.test_client() as c:
     check("register CSV includes route type", b"Route type" in r.data)
 
     # --- reports and dashboard surface the routing comparison ---
-    r = get(c, "/reports/", label="reports render with the routing comparison")
+    r = get(c, "/reports/timing", label="timing report renders with the routing comparison")
     body = r.data.decode()
     check("reports compare direct against the hub route",
           "Direct versus the fulfilment centre route" in body)
@@ -789,7 +919,7 @@ with app.app_context():
 
 with app.test_client() as c:
     login(c, "zak@scientificgate.test")
-    r = get(c, "/reports/", label="reports list date anomalies")
+    r = get(c, "/reports/exceptions", label="exceptions report lists date anomalies")
     check("anomaly panel present", "Date anomalies" in r.data.decode())
     if anomalous_id:
         r = get(c, f"/shipments/{anomalous_id}", label="anomalous shipment detail renders")

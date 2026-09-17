@@ -262,6 +262,21 @@ translation later is a one-line change in `app/i18n.py`.
 
 ## What's new in this build
 
+**Reports now open as a submenu, not one long page** — **Admin -> Reports & KPIs** is a
+hub of the headline KPI tiles plus a menu of the individual reports, each its own page:
+Pipeline & ageing, Timing & routes, Cost breakdown, Brands & suppliers, Equipment & value,
+and Exceptions (document gaps and date anomalies). A submenu strip on every report page
+switches between them without going back to the hub. The full register export (Excel/CSV/PDF)
+stays a click away from the hub.
+
+**Users can now be edited and deleted, not just added** — each row on **Admin -> Users**
+opens to an edit form (name, email, role, phone, active flag, and an optional password
+reset), and a Delete option that only appears when it's safe: blocked for your own signed-in
+account, for the last active full-access user (so the system can never be locked out), and
+for any account with activity on record (a shipment, comment, notification, etc.) — that one
+gets a message pointing at "set Active to No" instead of a delete that would break the
+history.
+
 **A six-role access model matching the company's actual positions, extensible by the CFO**
 — the role matrix is now CFO, MD, Finance, Sales, Sales Admin and Logistics Admin
 (Procurement and Warehouse folded into Logistics Admin, since one person typically runs
