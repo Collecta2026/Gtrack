@@ -1,0 +1,15 @@
+{% extends "base.html" %}
+{% block heading %}{{ t("Master data") }}{% endblock %}
+{% block crumb %}{{ t("Clean, de-duplicated reference records") }}{% endblock %}
+
+{% block content %}
+<div class="tiles">
+  {% for key, spec in registry.items() %}
+    <a class="tile" href="{{ url_for('masters.listing', entity=key) }}" style="display:block;color:inherit;text-decoration:none">
+      <div class="lab">{{ t(spec[1]) }}</div>
+      <div class="val">{{ counts[key] }}</div>
+      <div class="sub">{{ t("records →") }}</div>
+    </a>
+  {% endfor %}
+</div>
+{% endblock %}

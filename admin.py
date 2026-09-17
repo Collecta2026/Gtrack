@@ -1,11 +1,27 @@
+import re
+from datetime import date
+
 from flask import Blueprint, render_template, request, redirect, url_for, flash, abort
 from flask_login import login_required, current_user
 
-from ..models import (db, User, Role, NotificationRule, NotificationLog, AuditLog, Stage)
-from ..auth import permission_required
+from ..models import (db, User, Role, NotificationRule, NotificationLog, AuditLog, Stage,
+                      ExchangeRate, FX_RATES)
+from ..auth import permission_required, PERMISSIONS, SYSTEM_ROLE_CODE
 from ..exports import export_response
+from ..i18n import t
 
 bp = Blueprint("admin", __name__)
+
+
+@bp.route("/")
+@permission_required("*")
+def index():
+    """Admin hub — the dedicated section for users, roles, the authorisation
+    matrix and FX rates, plus the rest of the administration screens."""
+    return render_template("admin/index.html",
+                           user_count=User.query.count(),
+                           role_count=Role.query.count(),
+                           currency_count=len({c for c, in db.session.query(ExchangeRate.code).distinct()} | set(FX_RATES)))
 
 
 @bp.route("/users", methods=["GET", "POST"])
@@ -27,7 +43,7 @@ def users():
         if not user_id:
             db.session.add(user)
         db.session.commit()
-        flash("User saved.", "success")
+        flash(t("User saved."), "success")
         return redirect(url_for("admin.users"))
 
     return render_template("admin/users.html",
@@ -35,10 +51,105 @@ def users():
                            roles=Role.query.order_by(Role.id).all())
 
 
-@bp.route("/roles")
+def _unique_role_code(base):
+    code = re.sub(r"[^a-z0-9]+", "_", (base or "role").strip().lower()).strip("_") or "role"
+    candidate = code
+    i = 1
+    while Role.query.filter_by(code=candidate).first():
+        i += 1
+        candidate = f"{code}_{i}"
+    return candidate
+
+
+@bp.route("/roles", methods=["GET", "POST"])
 @permission_required("*")
 def roles():
+    """The role matrix — who exists as a role. Room to add more roles here at
+    any time; what each role can actually access is set separately, on the
+    Authorisation matrix."""
+    if request.method == "POST":
+        role_id = request.form.get("id", type=int)
+        role_name = (request.form.get("role_name") or "").strip()
+        if not role_name:
+            flash(t("A role name is required."), "error")
+            return redirect(url_for("admin.roles"))
+
+        role = db.session.get(Role, role_id) if role_id else None
+        if role is None:
+            role = Role(code=_unique_role_code(request.form.get("code") or role_name),
+                       permissions="")
+            db.session.add(role)
+        role.role_name = role_name
+        role.description = (request.form.get("description") or "").strip()
+        db.session.commit()
+        flash(t("Role saved. Set what it can access on the Authorisation matrix."), "success")
+        return redirect(url_for("admin.roles"))
+
     return render_template("admin/roles.html", roles=Role.query.order_by(Role.id).all())
+
+
+@bp.route("/authorisation", methods=["GET", "POST"])
+@permission_required("*")
+def authorisation():
+    """The Authorisation matrix — separate from the role list itself: what
+    each role can actually see and do, permission by permission."""
+    roles_list = Role.query.order_by(Role.id).all()
+
+    if request.method == "POST":
+        # The page posts the whole matrix as one form, with a hidden role_ids entry
+        # per row, so a genuine submission always names every role. Only touch a role
+        # that was actually named in the submitted form — a partial or malformed post
+        # (or a future template change that drops a row) then leaves the roles it
+        # didn't mention untouched, rather than silently stripping their access.
+        submitted_ids = {v for v in request.form.getlist("role_ids") if v.isdigit()}
+        for role in roles_list:
+            if role.code == SYSTEM_ROLE_CODE:
+                continue  # This role always keeps full access — it manages this matrix.
+            if str(role.id) not in submitted_ids:
+                continue
+            if request.form.get(f"full__{role.id}"):
+                role.permissions = "*"
+            else:
+                selected = [key for key, _ in PERMISSIONS
+                           if request.form.get(f"perm__{role.id}__{key}")]
+                role.permissions = ",".join(selected)
+        db.session.commit()
+        flash(t("Authorisation matrix updated."), "success")
+        return redirect(url_for("admin.authorisation"))
+
+    return render_template("admin/authorisation.html", roles=roles_list, permissions=PERMISSIONS,
+                           system_role_code=SYSTEM_ROLE_CODE)
+
+
+@bp.route("/fx-rates", methods=["GET", "POST"])
+@permission_required("*")
+def fx_rates():
+    """FX rate management — the ExchangeRate table admins can actually edit,
+    replacing the indicative hard-coded defaults once a rate is set."""
+    if request.method == "POST":
+        code = (request.form.get("code") or "").strip().upper()
+        rate = request.form.get("rate_to_base", type=float)
+        rate_date = request.form.get("rate_date") or date.today().isoformat()
+        if not code or not rate:
+            flash(t("Currency and rate are both required."), "error")
+        else:
+            db.session.add(ExchangeRate(code=code, rate_to_base=rate,
+                                        rate_date=date.fromisoformat(rate_date)))
+            db.session.commit()
+            flash(t("FX rate saved."), "success")
+        return redirect(url_for("admin.fx_rates"))
+
+    all_codes = sorted({c for c, in db.session.query(ExchangeRate.code).distinct()} | set(FX_RATES))
+    current = {}
+    history = {}
+    for code in all_codes:
+        rows = (ExchangeRate.query.filter_by(code=code)
+                .order_by(ExchangeRate.rate_date.desc(), ExchangeRate.id.desc()).all())
+        history[code] = rows
+        current[code] = rows[0] if rows else None
+
+    return render_template("admin/fx_rates.html", codes=all_codes, current=current,
+                           history=history, defaults=FX_RATES, today=date.today().isoformat())
 
 
 @bp.route("/notification-rules", methods=["GET", "POST"])
@@ -57,7 +168,7 @@ def notification_rules():
         if not rule_id:
             db.session.add(rule)
         db.session.commit()
-        flash("Notification rule saved.", "success")
+        flash(t("Notification rule saved."), "success")
         return redirect(url_for("admin.notification_rules"))
 
     return render_template("admin/notification_rules.html",

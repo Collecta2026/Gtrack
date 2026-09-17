@@ -83,19 +83,22 @@ it only matters if you want to reach Gtrack from another device on your network.
 
 ### Test accounts
 
-Every account uses the password **demo1234**. Each role sees a different slice of the
-system — sign in as more than one to see the access model working.
+The sign-in screen is a plain email/password form — no directory of accounts on it, since
+in real use every account is created by the CFO from **Admin -> Users** with a password
+they set. The seed data below is only for trying the system out locally; every seeded
+account uses the password **demo1234**.
 
 | Email | Role | What they see |
 |---|---|---|
-| `zak@scientificgate.test` | Admin | Everything, plus Admin -> Users, Roles, Authorisation matrix, FX rates |
+| `zak@scientificgate.test` | CFO | Everything, plus Admin -> Users, Roles, Authorisation matrix, FX rates |
 | `amr@scientificgate.test` | MD | Full read + dashboards, no admin |
-| `procurement@scientificgate.test` | Logistics Manager | POs, supplier invoices, suppliers, shipments, stages, Form 4, warehouse receipt |
-| `logistics@scientificgate.test` | Logistics Manager | Same as above |
 | `finance@scientificgate.test` | Finance | Costs, payments, bank registration |
 | `sales1@scientificgate.test` | Sales | **Only their own customers' shipments** |
 | `sales2@scientificgate.test` | Sales | A different customer portfolio |
-| `warehouse@scientificgate.test` | Logistics Manager | Receipt, condition, serials — folded into Logistics Manager |
+| `salesadmin@scientificgate.test` | Sales Admin | All customers' allocations, not just their own |
+| `procurement@scientificgate.test` | Logistics Admin | POs, supplier invoices, suppliers, shipments, stages, Form 4, warehouse receipt |
+| `logistics@scientificgate.test` | Logistics Admin | Same as above |
+| `warehouse@scientificgate.test` | Logistics Admin | Receipt, condition, serials — folded into Logistics Admin |
 
 Sign in as `sales1` to see the point of the whole system: the account manager sees where
 each of their customers' machines is, and nothing else.
@@ -208,13 +211,14 @@ clearance times read as *unknown* rather than being counted as negative, so no a
 skewed, and the affected shipments are listed in Reports and flagged on their own page for
 correction at source.
 
-**Access & audit** — five roles out of the box (Logistics Manager, Finance, Sales, Admin,
-MD), each with per-permission scoping; an admin can add more at any time from **Admin ->
-Roles**, with no code change. What a role can actually see and do is set separately, on
-the **Authorisation matrix**, decoupled from the role list itself — a new role starts with
-no access until it is granted some there. Sales users are restricted at the query level to
-shipments carrying their own customers' allocations; a full audit log captures every
-field-level change with the user who made it.
+**Access & audit** — six roles out of the box, matching the company's actual positions
+(CFO, MD, Finance, Sales, Sales Admin, Logistics Admin), each with per-permission scoping;
+the CFO can add more at any time from **Admin -> Roles**, with no code change. What a role
+can actually see and do is set separately, on the **Authorisation matrix**, decoupled from
+the role list itself — a new role starts with no access until it is granted some there.
+Sales users are restricted at the query level to shipments carrying their own customers'
+allocations; Sales Admin sees and manages every customer's allocations. A full audit log
+captures every field-level change with the user who made it.
 
 **Admin section** — a dedicated area (**Admin** in the sidebar) grouping Users, Roles, the
 Authorisation matrix and FX rates, alongside Master data, Notification rules and the Audit
@@ -258,16 +262,19 @@ translation later is a one-line change in `app/i18n.py`.
 
 ## What's new in this build
 
-**A five-role access model, extensible by the admin** — the role matrix is now Logistics
-Manager, Finance, Sales, Admin and MD (Procurement and Warehouse folded into Logistics
-Manager, since one person typically runs both in practice). An admin can add further roles
-at any time from **Admin -> Roles**, with no code change. What a role can access is set
-separately, on the new **Authorisation matrix** — a permission-by-permission grid, decoupled
-from the role list itself, so adding a role and deciding what it can do are two distinct
-steps. A new dedicated **Admin section** groups Users, Roles, the Authorisation matrix and
-FX rates in one place; FX rates moved from a hard-coded default to an admin-editable dated
-series, with the most recent rate for each currency used everywhere costs are converted to
-EGP.
+**A six-role access model matching the company's actual positions, extensible by the CFO**
+— the role matrix is now CFO, MD, Finance, Sales, Sales Admin and Logistics Admin
+(Procurement and Warehouse folded into Logistics Admin, since one person typically runs
+both in practice; Sales Admin is the department-wide view over every customer, on top of
+the regular Sales rep's own-customers-only view). The CFO — the one role with full access —
+can add further roles at any time from **Admin -> Roles**, with no code change. What a role
+can access is set separately, on the new **Authorisation matrix** — a permission-by-permission
+grid, decoupled from the role list itself, so adding a role and deciding what it can do are
+two distinct steps. A new dedicated **Admin section** groups Users, Roles, the Authorisation
+matrix and FX rates in one place; FX rates moved from a hard-coded default to an
+admin-editable dated series, with the most recent rate for each currency used everywhere
+costs are converted to EGP. The sign-in screen is now a plain email/password form, with no
+directory of demo accounts on it.
 
 **The two-step supply route** — shipments can now run origin → Jebel Ali fulfilment centre
 → Cairo as well as straight from origin, with the two legs linked so a machine's whole

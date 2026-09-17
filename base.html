@@ -51,9 +51,12 @@
 
       {% if current_user.can('*') %}
       <div class="group">{{ t("Administration") }}</div>
-      <a href="{{ url_for('masters.index') }}" class="{{ 'active' if 'masters' in (request.endpoint or '') }}">{{ t("Master data") }}</a>
+      <a href="{{ url_for('admin.index') }}" class="{{ 'active' if (request.endpoint or '') == 'admin.index' }}">{{ t("Admin") }}</a>
       <a href="{{ url_for('admin.users') }}" class="{{ 'active' if (request.endpoint or '') == 'admin.users' }}">{{ t("Users") }}</a>
       <a href="{{ url_for('admin.roles') }}" class="{{ 'active' if (request.endpoint or '') == 'admin.roles' }}">{{ t("Roles") }}</a>
+      <a href="{{ url_for('admin.authorisation') }}" class="{{ 'active' if (request.endpoint or '') == 'admin.authorisation' }}">{{ t("Authorisation matrix") }}</a>
+      <a href="{{ url_for('admin.fx_rates') }}" class="{{ 'active' if (request.endpoint or '') == 'admin.fx_rates' }}">{{ t("FX rates") }}</a>
+      <a href="{{ url_for('masters.index') }}" class="{{ 'active' if 'masters' in (request.endpoint or '') }}">{{ t("Master data") }}</a>
       <a href="{{ url_for('admin.notification_rules') }}" class="{{ 'active' if (request.endpoint or '') == 'admin.notification_rules' }}">{{ t("Notification rules") }}</a>
       <a href="{{ url_for('admin.audit') }}" class="{{ 'active' if (request.endpoint or '') == 'admin.audit' }}">{{ t("Audit log") }}</a>
       {% elif current_user.can('edit_masters') %}

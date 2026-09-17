@@ -1,31 +1,60 @@
 {% extends "base.html" %}
-{% block heading %}{{ t("Roles & permissions") }}{% endblock %}
-{% block crumb %}{{ t("What each role can see and do") }}{% endblock %}
+{% block heading %}{{ t("Roles") }}{% endblock %}
+{% block crumb %}{{ t("The role matrix — add more at any time; set what each one can access on the Authorisation matrix") }}{% endblock %}
+
+{% block actions %}
+  <a class="btn ghost sm" href="{{ url_for('admin.authorisation') }}">{{ t("Authorisation matrix") }}</a>
+{% endblock %}
 
 {% block content %}
 <div class="card">
   <div class="table-wrap">
     <table>
-      <thead><tr><th>{{ t("Role") }}</th><th>{{ t("Description") }}</th><th>{{ t("Permissions") }}</th><th class="num">{{ t("Users") }}</th></tr></thead>
+      <thead><tr><th>{{ t("Role") }}</th><th>{{ t("Description") }}</th><th>{{ t("Access") }}</th><th class="num">{{ t("Users") }}</th></tr></thead>
       <tbody>
       {% for r in roles %}
         <tr>
-          <td class="small nowrap"><strong>{{ r.role_name }}</strong><div class="tiny muted">{{ r.code }}</div></td>
+          <td class="small nowrap">
+            <details>
+              <summary><strong>{{ r.role_name }}</strong></summary>
+              <form method="post" style="margin-top:.4rem;min-width:220px">
+                <input type="hidden" name="id" value="{{ r.id }}">
+                <div class="field"><label>{{ t("Role name") }}</label><input type="text" name="role_name" value="{{ r.role_name }}" required></div>
+                <div class="field"><label>{{ t("Description") }}</label><input type="text" name="description" value="{{ r.description or '' }}"></div>
+                <button class="btn sm ghost" type="submit">{{ t("Save") }}</button>
+              </form>
+            </details>
+            <div class="tiny muted">{{ r.code }}</div>
+          </td>
           <td class="small">{{ r.description }}</td>
           <td class="small">
             {% if '*' in r.perm_list() %}
               <span class="pill navy">{{ t("full access") }}</span>
             {% else %}
-              {% for p in r.perm_list() %}
-                <span class="pill grey" style="margin:0 .12rem .16rem 0">{{ p.replace('_', ' ') }}</span>
-              {% endfor %}
+              <span class="pill grey">{{ r.perm_list() | length }} {{ t("permissions") }}</span>
             {% endif %}
+            — <a href="{{ url_for('admin.authorisation') }}">{{ t("edit access") }}</a>
           </td>
           <td class="num">{{ r.users | length }}</td>
         </tr>
       {% endfor %}
       </tbody>
     </table>
+  </div>
+
+  <div class="card-body">
+    <details class="inline-add" style="border:none;padding:0">
+      <summary>{{ t("Add a role") }}</summary>
+      <form method="post" style="margin-top:.6rem">
+        <div class="grid c3">
+          <div class="field"><label>{{ t("Role name") }}</label><input type="text" name="role_name" required></div>
+          <div class="field"><label>{{ t("Code") }}</label><input type="text" name="code" placeholder="{{ t('derived from the name if left blank') }}"></div>
+          <div class="field"><label>{{ t("Description") }}</label><input type="text" name="description"></div>
+        </div>
+        <p class="small muted">{{ t("New roles start with no access. Grant permissions straight after on the Authorisation matrix.") }}</p>
+        <div class="btn-row mt1"><button class="btn sm" type="submit">{{ t("Add role") }}</button></div>
+      </form>
+    </details>
   </div>
 </div>
 {% endblock %}

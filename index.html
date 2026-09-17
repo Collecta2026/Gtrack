@@ -1,146 +1,67 @@
 {% extends "base.html" %}
-{% block heading %}{{ t("Shipment register") }}{% endblock %}
-{% block crumb %}{{ shipments | length }} shipment{{ '' if shipments|length == 1 else 's' }}{% endblock %}
-
-{% block actions %}
-  <a class="btn ghost sm" href="{{ url_for('shipments.board') }}">{{ t("Board view") }}</a>
-  <a class="btn ghost sm" href="{{ url_for('shipments.index', export='xlsx', **filters) }}">{{ t("Excel") }}</a>
-  <a class="btn ghost sm" href="{{ url_for('shipments.index', export='csv', **filters) }}">{{ t("CSV") }}</a>
-  <a class="btn ghost sm" href="{{ url_for('shipments.index', export='pdf', **filters) }}">{{ t("PDF") }}</a>
-  {% if current_user.can('edit_shipment') %}
-    <a class="btn sm" href="{{ url_for('shipments.create') }}">{{ t("New shipment") }}</a>
-  {% endif %}
-{% endblock %}
+{% block heading %}{{ t("Admin") }}{% endblock %}
+{% block crumb %}{{ t("Users, roles, the authorisation matrix and FX rates") }}{% endblock %}
 
 {% block content %}
 
-<div class="card">
-  <div class="card-body tight">
-    <form method="get" class="filters">
-      <div class="field" style="flex:1;min-width:190px">
-        <label>{{ t("Search") }}</label>
-        <input type="text" name="q" value="{{ filters.q }}" placeholder="Reference, ACID, BL/AWB, description…">
-      </div>
-      <div class="field">
-        <label>{{ t("Status") }}</label>
-        <select name="status">
-          <option value="all" {{ 'selected' if filters.status == 'all' }}>All</option>
-          <option value="open" {{ 'selected' if filters.status == 'open' }}>Open</option>
-          <option value="closed" {{ 'selected' if filters.status == 'closed' }}>Closed</option>
-          <option value="delayed" {{ 'selected' if filters.status == 'delayed' }}>Delayed</option>
-        </select>
-      </div>
-      <div class="field">
-        <label>{{ t("Stage") }}</label>
-        <select name="stage">
-          <option value="">Any</option>
-          {% for code, label in stages %}
-            <option value="{{ code }}" {{ 'selected' if filters.stage == code }}>{{ label }}</option>
-          {% endfor %}
-        </select>
-      </div>
-      <div class="field">
-        <label>{{ t("Brand") }}</label>
-        <select name="brand">
-          <option value="">Any</option>
-          {% for b in brands %}
-            <option value="{{ b.id }}" {{ 'selected' if filters.brand == b.id }}>{{ b.brand_name }}</option>
-          {% endfor %}
-        </select>
-      </div>
-      <div class="field">
-        <label>{{ t("Supplier") }}</label>
-        <select name="supplier">
-          <option value="">Any</option>
-          {% for s in suppliers %}
-            <option value="{{ s.id }}" {{ 'selected' if filters.supplier == s.id }}>{{ s.name }}</option>
-          {% endfor %}
-        </select>
-      </div>
-      <div class="field">
-        <label>{{ t("Mode") }}</label>
-        <select name="mode">
-          <option value="">Any</option>
-          {% for code, label in modes %}
-            <option value="{{ code }}" {{ 'selected' if filters.mode == code }}>{{ label }}</option>
-          {% endfor %}
-        </select>
-      </div>
-      <div class="field">
-        <label>{{ t("Route type") }}</label>
-        <select name="route">
-          <option value="">{{ t("Any") }}</option>
-          {% for code, label in route_types %}
-            <option value="{{ code }}" {{ 'selected' if filters.route == code }}>{{ t(label) }}</option>
-          {% endfor %}
-        </select>
-      </div>
-      <div class="btn-row">
-        <button class="btn sm" type="submit">{{ t("Filter") }}</button>
-        <a class="btn ghost sm" href="{{ url_for('shipments.index') }}">{{ t("Reset") }}</a>
-      </div>
-    </form>
-  </div>
+<div class="tiles">
+  <a class="tile" href="{{ url_for('admin.users') }}" style="display:block;color:inherit;text-decoration:none">
+    <div class="lab">{{ t("Users") }}</div>
+    <div class="val">{{ user_count }}</div>
+    <div class="sub">{{ t("accounts, each assigned a role") }}</div>
+  </a>
+  <a class="tile" href="{{ url_for('admin.roles') }}" style="display:block;color:inherit;text-decoration:none">
+    <div class="lab">{{ t("Roles") }}</div>
+    <div class="val">{{ role_count }}</div>
+    <div class="sub">{{ t("add more at any time") }}</div>
+  </a>
+  <a class="tile" href="{{ url_for('admin.authorisation') }}" style="display:block;color:inherit;text-decoration:none">
+    <div class="lab">{{ t("Authorisation matrix") }}</div>
+    <div class="val">→</div>
+    <div class="sub">{{ t("what each role can access") }}</div>
+  </a>
+  <a class="tile" href="{{ url_for('admin.fx_rates') }}" style="display:block;color:inherit;text-decoration:none">
+    <div class="lab">{{ t("FX rates") }}</div>
+    <div class="val">{{ currency_count }}</div>
+    <div class="sub">{{ t("currencies, indicative unless set") }}</div>
+  </a>
 </div>
 
 <div class="card">
-  {% if shipments %}
-  <div class="table-wrap">
-    <table>
-      <thead>
-        <tr>
-          <th>{{ t("Reference") }}</th><th>{{ t("Stage") }}</th><th>{{ t("Brand") }}</th><th>{{ t("Supplier") }}</th>
-          <th>{{ t("Route") }}</th><th>{{ t("Route type") }}</th><th>{{ t("Mode") }}</th><th>{{ t("ETA") }}</th><th class="num">{{ t("In stage") }}</th>
-          <th class="num">{{ t("Value") }}</th><th>{{ t("Customers") }}</th><th>{{ t("Docs") }}</th><th></th>
-        </tr>
-      </thead>
-      <tbody>
-      {% for s in shipments %}
-        <tr>
-          <td class="nowrap">
-            <a href="{{ url_for('shipments.detail', shipment_id=s.id) }}"><strong>{{ s.reference_no }}</strong></a>
-            {% if s.is_delayed %}<span class="pill red" style="margin-left:.25rem">late</span>{% endif %}
-          </td>
-          <td class="small">
-            <span class="pill {{ 'green' if s.current_stage in ['warehouse','installation'] else 'red' if s.current_stage in ['cancelled','re_exported'] else 'navy' }}">
-              {{ s.stage_label }}
-            </span>
-          </td>
-          <td class="small">{{ s.brand.brand_name if s.brand else '—' }}</td>
-          <td class="small">{{ s.supplier.name if s.supplier else '—' }}</td>
-          <td class="small nowrap">{{ s.origin or '—' }} → {{ s.destination or '—' }}</td>
-          <td class="small nowrap">
-            <span class="pill {{ 'olive' if s.is_hub_leg else 'grey' }}">{{ s.route_label }}</span>
-            {% if s.is_consolidated %}<div class="tiny muted">{{ t("consolidated") }}</div>{% endif %}
-          </td>
-          <td class="small">{{ (s.mode or '—') | upper }}</td>
-          <td class="small nowrap">{{ s.eta | shortdate }}</td>
-          <td class="num">
-            {% if s.is_open %}
-              <span class="pill {{ 'red' if s.days_in_stage > 30 else 'amber' if s.days_in_stage > 14 else 'grey' }}">{{ s.days_in_stage }}d</span>
-            {% else %}<span class="muted">—</span>{% endif %}
-          </td>
-          <td class="num small">{{ s.total_value | money }}</td>
-          <td class="small">
-            {% if s.allocated_customers %}
-              {{ s.allocated_customers | map(attribute='customer_name') | join(', ') }}
-            {% else %}<span class="muted">—</span>{% endif %}
-          </td>
-          <td class="num">
-            <span class="pill {{ 'green' if s.doc_completeness == 100 else 'amber' if s.doc_completeness >= 50 else 'red' }}">
-              {{ s.doc_completeness }}%
-            </span>
-          </td>
-          <td class="right nowrap">
-            <a class="btn ghost sm" href="{{ url_for('shipments.statement', shipment_id=s.id) }}">{{ t("Statement") }}</a>
-          </td>
-        </tr>
-      {% endfor %}
-      </tbody>
-    </table>
+  <div class="card-body">
+    <div class="grid c3">
+      <div>
+        <h3 style="margin:0 0 .3rem">{{ t("Users") }}</h3>
+        <p class="small muted">{{ t("Create accounts and assign each one a role.") }}</p>
+        <a class="btn sm ghost" href="{{ url_for('admin.users') }}">{{ t("Manage users") }}</a>
+      </div>
+      <div>
+        <h3 style="margin:0 0 .3rem">{{ t("Roles") }}</h3>
+        <p class="small muted">{{ t("The role matrix — currently CFO, MD, Finance, Sales, Sales Admin and Logistics Admin. Add more whenever the business needs a new one.") }}</p>
+        <a class="btn sm ghost" href="{{ url_for('admin.roles') }}">{{ t("Manage roles") }}</a>
+      </div>
+      <div>
+        <h3 style="margin:0 0 .3rem">{{ t("Authorisation matrix") }}</h3>
+        <p class="small muted">{{ t("Separate from the role list itself — exactly what each role can see and do, permission by permission.") }}</p>
+        <a class="btn sm ghost" href="{{ url_for('admin.authorisation') }}">{{ t("Open matrix") }}</a>
+      </div>
+      <div>
+        <h3 style="margin:0 0 .3rem">{{ t("FX rates") }}</h3>
+        <p class="small muted">{{ t("The exchange rates used to convert every cost line into EGP. Indicative until an admin sets one.") }}</p>
+        <a class="btn sm ghost" href="{{ url_for('admin.fx_rates') }}">{{ t("Manage FX rates") }}</a>
+      </div>
+      <div>
+        <h3 style="margin:0 0 .3rem">{{ t("Notification rules") }}</h3>
+        <p class="small muted">{{ t("Triggers, audiences, channels and message templates.") }}</p>
+        <a class="btn sm ghost" href="{{ url_for('admin.notification_rules') }}">{{ t("Manage notification rules") }}</a>
+      </div>
+      <div>
+        <h3 style="margin:0 0 .3rem">{{ t("Audit log") }}</h3>
+        <p class="small muted">{{ t("Every field-level change, filterable and exportable.") }}</p>
+        <a class="btn sm ghost" href="{{ url_for('admin.audit') }}">{{ t("View audit log") }}</a>
+      </div>
+    </div>
   </div>
-  {% else %}
-    <div class="empty">{{ t("No shipments match these filters.") }}</div>
-  {% endif %}
 </div>
+
 {% endblock %}

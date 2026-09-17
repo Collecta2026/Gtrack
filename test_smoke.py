@@ -398,11 +398,30 @@ with app.test_client() as c:
 
 with app.test_client() as c:
     login(c, "warehouse@scientificgate.test")
-    get(c, "/shipments/", label="warehouse user (now Logistics Manager): shipment list")
-    # Warehouse and Procurement were folded into Logistics Manager, which does carry
+    get(c, "/shipments/", label="warehouse user (now Logistics Admin): shipment list")
+    # Warehouse and Procurement were folded into Logistics Admin, which does carry
     # view_reports — so this account can now see reports, unlike the old warehouse role.
-    get(c, "/reports/", label="warehouse user (now Logistics Manager): can view reports")
-    get(c, "/admin/users", expect=403, label="logistics: blocked from user admin")
+    get(c, "/reports/", label="warehouse user (now Logistics Admin): can view reports")
+    get(c, "/admin/users", expect=403, label="logistics admin: blocked from user admin")
+
+with app.test_client() as c:
+    login(c, "salesadmin@scientificgate.test")
+    get(c, "/equipment/allocations", label="sales admin: allocations")
+    get(c, "/reports/", label="sales admin: reports")
+    get(c, "/admin/users", expect=403, label="sales admin: blocked from user admin")
+
+    # Unlike a Sales rep, Sales Admin is not scoped to their own customers — a shipment
+    # belonging to a different sales owner's customer must still be visible.
+    with app.app_context():
+        other_ref2 = None
+        for sh in Shipment.query.all():
+            if not any(a.customer and a.customer.sales_owner_id == sales_user.id
+                       for a in sh.allocations):
+                other_ref2 = sh.reference_no
+                other_id2 = sh.id
+                break
+    if other_ref2:
+        get(c, f"/shipments/{other_id2}", label="sales admin: can open a shipment outside sales1's own customers")
 
 with app.test_client() as c:
     login(c, "amr@scientificgate.test")
@@ -412,24 +431,31 @@ with app.test_client() as c:
 print("\n=== Role matrix / Authorisation matrix / FX rates (Admin section) ===")
 with app.app_context():
     role_codes = {r.code for r in Role.query.all()}
-    check("exactly the five requested roles exist by default",
-          role_codes == {"admin", "logistics", "finance", "sales", "md"}, f"({role_codes})")
-    admin_role = Role.query.filter_by(code="admin").first()
-    check("admin role keeps full access", admin_role.has("*"))
-    logistics_role = Role.query.filter_by(code="logistics").first()
-    check("logistics role absorbed procurement permission (edit_po)",
-          logistics_role.has("edit_po"))
-    check("logistics role absorbed warehouse permission (edit_asset)",
-          logistics_role.has("edit_asset"))
+    # Subset, not equality — a prior smoke run against the same (unre-seeded) database
+    # may have left a "Smoke Test Role ..." behind from testing "add a role" below,
+    # which is exactly the extensibility this is meant to allow, not a regression.
+    check("the six real positions exist by default",
+          {"cfo", "md", "finance", "sales", "sales_admin", "logistics_admin"} <= role_codes,
+          f"({role_codes})")
+    cfo_role = Role.query.filter_by(code="cfo").first()
+    check("CFO role keeps full access", cfo_role.has("*"))
+    logistics_admin_role = Role.query.filter_by(code="logistics_admin").first()
+    check("Logistics Admin role absorbed procurement permission (edit_po)",
+          logistics_admin_role.has("edit_po"))
+    check("Logistics Admin role absorbed warehouse permission (edit_asset)",
+          logistics_admin_role.has("edit_asset"))
+    sales_admin_role = Role.query.filter_by(code="sales_admin").first()
+    check("Sales Admin role sees all shipments, unlike a Sales rep",
+          sales_admin_role.has("view_all") and not sales_admin_role.has("view_own_customers"))
 
 with app.test_client() as c:
     login(c, "zak@scientificgate.test")
-    get(c, "/admin/", label="admin: Admin hub")
-    get(c, "/admin/roles", label="admin: Roles page")
-    get(c, "/admin/authorisation", label="admin: Authorisation matrix page")
-    get(c, "/admin/fx-rates", label="admin: FX rates page")
+    get(c, "/admin/", label="CFO: Admin hub")
+    get(c, "/admin/roles", label="CFO: Roles page")
+    get(c, "/admin/authorisation", label="CFO: Authorisation matrix page")
+    get(c, "/admin/fx-rates", label="CFO: FX rates page")
 
-    # Admin can add a new role — the matrix is not capped at the five defaults.
+    # The CFO can add a new role — the matrix is not capped at the six defaults.
     resp = c.post("/admin/roles",
                   data={"role_name": f"Smoke Test Role {RUN}", "description": "temp"},
                   follow_redirects=True)
@@ -446,7 +472,7 @@ with app.test_client() as c:
     # carrying forward every other role's current permissions unchanged — rather
     # than a partial one that would wipe roles the test isn't touching.
     with app.app_context():
-        before = {r.id: set(r.perm_list()) for r in Role.query.all() if r.code != "admin"}
+        before = {r.id: set(r.perm_list()) for r in Role.query.all() if r.code != "cfo"}
     form_data = {"role_ids": [str(role_id) for role_id in before]}
     for role_id, perms in before.items():
         if "*" in perms:

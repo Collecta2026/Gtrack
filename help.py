@@ -203,9 +203,17 @@ MENU_GUIDE = [
                            "old spreadsheet had the same supplier under several spellings, which "
                            "silently split every total."),
     ]),
-    ("Users, roles, rules, audit", "admin", [
-        ("Users", "Create accounts and assign roles."),
-        ("Roles", "What each role can see and do, as a permission list."),
+    ("Admin: users, roles, authorisation, FX rates, audit", "admin", [
+        ("Users", "Create accounts and assign each one a role."),
+        ("Roles", "The role matrix — CFO, MD, Finance, Sales, Sales Admin and Logistics Admin "
+                 "out of the box, matching the company's actual positions. The CFO can add more "
+                 "at any time from Admin -> Roles."),
+        ("Authorisation matrix", "Separate from the role list itself — a permission-by-permission "
+                                 "grid of exactly what each role can see and do. New roles start "
+                                 "with no access until this is set."),
+        ("FX rates", "The exchange rates used to convert every cost line into EGP. Indicative "
+                     "defaults until an admin sets one from Admin -> FX rates; each save is dated, "
+                     "and the most recent rate for a currency is what the system uses."),
         ("Notification rules", "Triggers, audiences, channels and message templates — editable "
                                "without a code change."),
         ("Audit log", "Every field-level change with the user who made it and when. Filter by "

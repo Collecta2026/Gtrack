@@ -13,32 +13,71 @@ bp = Blueprint("auth", __name__)
 
 # --------------------------------------------------------------------------
 # Role definitions — code, name, description, permissions
+#
+# This is the seed set only, matching the company's actual six positions.
+# The admin user matrix is not limited to these — new roles can be added at
+# any time from Admin -> Roles, and each one immediately gets its own column
+# in the Authorisation matrix.
+#
+# The CFO is the one role that always keeps full access ("*") and cannot be
+# downgraded from the Authorisation matrix — it is the account that manages
+# users, roles, the matrix itself and FX rates, so it can never be locked out.
 # --------------------------------------------------------------------------
 
 ROLE_DEFINITIONS = [
-    ("admin", "Administrator",
-     "Full access; manages users, roles and all master data.", "*"),
-    ("procurement", "Procurement Officer",
-     "Raises and manages purchase orders and supplier invoices; maintains the supplier master.",
-     "view_all,edit_po,edit_supplier_invoice,edit_masters,comment,view_reports"),
-    ("logistics", "Logistics & Customs Coordinator",
-     "Creates and manages shipments, quotations and bookings; updates transit and customs "
-     "milestones; manages ACID/Form 4 and documents.",
-     "view_all,edit_shipment,edit_stage,edit_quotation,edit_document,edit_bank_reg,edit_masters,"
-     "comment,view_reports"),
-    ("finance", "Finance / Treasury",
+    ("cfo", "CFO",
+     "Full access; manages users, roles, the authorisation matrix, FX rates and all master data.",
+     "*"),
+    ("md", "MD",
+     "Full read access and dashboards across all shipments; exportable reports.",
+     "view_all,view_reports,comment,export"),
+    ("finance", "Finance",
      "Manages cost lines, payment status, bank registration and financial reports.",
      "view_all,edit_cost,edit_supplier_invoice,edit_bank_reg,comment,view_reports"),
-    ("sales", "Sales Account Manager",
+    ("sales", "Sales",
      "Read-only view of shipments and allocations for their own customers; receives milestone "
      "alerts; can add customer-facing comments.",
      "view_own_customers,edit_allocation,comment,view_reports"),
-    ("warehouse", "Warehouse Officer",
-     "Confirms warehouse receipt, records condition/discrepancies, and triggers installation handover.",
-     "view_all,edit_stage,edit_asset,comment"),
-    ("management", "Management (CEO / CFO)",
-     "Full read access and dashboards across all shipments; exportable reports.",
-     "view_all,view_reports,comment,export"),
+    ("sales_admin", "Sales Admin",
+     "Department oversight — sees and manages allocations across every customer, not just "
+     "their own; receives milestone alerts; runs and exports sales reports.",
+     "view_all,edit_allocation,comment,view_reports,export"),
+    ("logistics_admin", "Logistics Admin",
+     "Raises and manages purchase orders and supplier invoices; creates and manages shipments, "
+     "quotations and bookings; updates transit and customs milestones; confirms warehouse receipt "
+     "and triggers installation handover; maintains the supplier and logistics master data.",
+     "view_all,edit_po,edit_supplier_invoice,edit_shipment,edit_stage,edit_quotation,edit_document,"
+     "edit_bank_reg,edit_asset,edit_masters,comment,view_reports"),
+]
+
+# The role that Admin -> Authorisation matrix always shows as locked at full
+# access, so the system can never be left with no one able to manage it.
+SYSTEM_ROLE_CODE = "cfo"
+
+
+# --------------------------------------------------------------------------
+# Permission keys — the columns of the Authorisation matrix (Admin ->
+# Authorisation matrix). "*" (full access) is granted separately, per role,
+# and is not one of these individually-toggled keys.
+# --------------------------------------------------------------------------
+
+PERMISSIONS = [
+    ("view_all", "View all shipments"),
+    ("view_own_customers", "View own customers' shipments only"),
+    ("view_reports", "View reports & KPIs"),
+    ("export", "Export reports"),
+    ("edit_masters", "Edit master data"),
+    ("edit_po", "Edit purchase orders"),
+    ("edit_supplier_invoice", "Edit supplier invoices"),
+    ("edit_shipment", "Edit shipments"),
+    ("edit_stage", "Advance shipment stage"),
+    ("edit_quotation", "Edit freight quotations"),
+    ("edit_document", "Edit documents"),
+    ("edit_cost", "Edit cost lines"),
+    ("edit_bank_reg", "Edit Form 4 / bank registration"),
+    ("edit_asset", "Edit serials / assets"),
+    ("edit_allocation", "Edit customer allocations"),
+    ("comment", "Add comments"),
 ]
 
 
@@ -112,8 +151,7 @@ def login():
             return redirect(request.args.get("next") or url_for("dashboard.index"))
         flash(t("Incorrect email or password."), "error")
 
-    demo_users = User.query.order_by(User.id).all()
-    return render_template("login.html", demo_users=demo_users)
+    return render_template("login.html")
 
 
 @bp.route("/logout")

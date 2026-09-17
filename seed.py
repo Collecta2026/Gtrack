@@ -360,14 +360,15 @@ class Cache:
 # --------------------------------------------------------------------------
 
 DEMO_USERS = [
-    ("Zak Saleh", "zak@scientificgate.test", "admin"),
+    ("Zak Saleh", "zak@scientificgate.test", "cfo"),
     ("Amr El-Bagoury", "amr@scientificgate.test", "md"),
-    ("Mostafa Hassan", "procurement@scientificgate.test", "logistics"),
-    ("Nourhan Adel", "logistics@scientificgate.test", "logistics"),
     ("Khaled Salah", "finance@scientificgate.test", "finance"),
     ("Sara Mahmoud", "sales1@scientificgate.test", "sales"),
     ("Omar Fathy", "sales2@scientificgate.test", "sales"),
-    ("Hesham Zaki", "warehouse@scientificgate.test", "logistics"),
+    ("Mona Adel", "salesadmin@scientificgate.test", "sales_admin"),
+    ("Mostafa Hassan", "procurement@scientificgate.test", "logistics_admin"),
+    ("Nourhan Adel", "logistics@scientificgate.test", "logistics_admin"),
+    ("Hesham Zaki", "warehouse@scientificgate.test", "logistics_admin"),
 ]
 
 DEMO_CUSTOMERS = [
