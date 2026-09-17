@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+{% block heading %}{{ t("Roles & permissions") }}{% endblock %}
+{% block crumb %}{{ t("What each role can see and do") }}{% endblock %}
+
+{% block content %}
+<div class="card">
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>{{ t("Role") }}</th><th>{{ t("Description") }}</th><th>{{ t("Permissions") }}</th><th class="num">{{ t("Users") }}</th></tr></thead>
+      <tbody>
+      {% for r in roles %}
+        <tr>
+          <td class="small nowrap"><strong>{{ r.role_name }}</strong><div class="tiny muted">{{ r.code }}</div></td>
+          <td class="small">{{ r.description }}</td>
+          <td class="small">
+            {% if '*' in r.perm_list() %}
+              <span class="pill navy">{{ t("full access") }}</span>
+            {% else %}
+              {% for p in r.perm_list() %}
+                <span class="pill grey" style="margin:0 .12rem .16rem 0">{{ p.replace('_', ' ') }}</span>
+              {% endfor %}
+            {% endif %}
+          </td>
+          <td class="num">{{ r.users | length }}</td>
+        </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

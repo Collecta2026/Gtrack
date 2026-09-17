@@ -1,0 +1,62 @@
+{% extends "base.html" %}
+{% block heading %}{{ t("Purchase orders") }}{% endblock %}
+{% block crumb %}{{ pos | length }} order{{ '' if pos|length == 1 else 's' }}{% endblock %}
+
+{% block actions %}
+  <a class="btn ghost sm" href="{{ url_for('purchase_orders.index', export='xlsx', status=current_status) }}">{{ t("Excel") }}</a>
+  <a class="btn ghost sm" href="{{ url_for('purchase_orders.index', export='pdf', status=current_status) }}">{{ t("PDF") }}</a>
+  {% if current_user.can('edit_po') %}
+    <a class="btn sm" href="{{ url_for('purchase_orders.create') }}">{{ t("New PO") }}</a>
+  {% endif %}
+{% endblock %}
+
+{% block content %}
+<div class="card">
+  <div class="card-body tight">
+    <form method="get" class="filters">
+      <div class="field">
+        <label>{{ t("Status") }}</label>
+        <select name="status" onchange="this.form.submit()">
+          <option value="">All</option>
+          {% for code, label in statuses %}
+            <option value="{{ code }}" {{ 'selected' if current_status == code }}>{{ label }}</option>
+          {% endfor %}
+        </select>
+      </div>
+    </form>
+  </div>
+</div>
+
+<div class="card">
+  {% if pos %}
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>{{ t("PO number") }}</th><th>{{ t("Supplier") }}</th><th>{{ t("Brand") }}</th><th>{{ t("Ordered") }}</th>
+        <th>{{ t("Expected ready") }}</th><th>{{ t("Status") }}</th><th class="num">{{ t("Lines") }}</th><th class="num">{{ t("Value") }}</th><th>{{ t("Shipments") }}</th></tr></thead>
+      <tbody>
+      {% for p in pos %}
+        <tr>
+          <td class="nowrap"><a href="{{ url_for('purchase_orders.detail', po_id=p.id) }}"><strong>{{ p.po_number }}</strong></a></td>
+          <td class="small">{{ p.supplier.name if p.supplier else '—' }}</td>
+          <td class="small">{{ p.brand.brand_name if p.brand else '—' }}</td>
+          <td class="small nowrap">{{ p.order_date | shortdate }}</td>
+          <td class="small nowrap">
+            {{ p.expected_ready_date | shortdate }}
+            {% if p.is_overdue %}<span class="pill red">{{ t("overdue") }}</span>{% endif %}
+          </td>
+          <td><span class="pill {{ 'green' if p.status == 'fulfilled' else 'grey' if p.status in ['draft','cancelled'] else 'navy' }}">{{ p.status_label }}</span></td>
+          <td class="num small">{{ p.lines | length }}</td>
+          <td class="num small">{{ p.total_value | money(p.currency) }}</td>
+          <td class="small">
+            {% for sh in p.shipments %}
+              <a href="{{ url_for('shipments.detail', shipment_id=sh.id) }}">{{ sh.reference_no }}</a>{{ ', ' if not loop.last }}
+            {% else %}<span class="muted">—</span>{% endfor %}
+          </td>
+        </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}<div class="empty">{{ t("No purchase orders match this filter.") }}</div>{% endif %}
+</div>
+{% endblock %}

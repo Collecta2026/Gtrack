@@ -1,0 +1,84 @@
+{% extends "base.html" %}
+{% block heading %}{{ t("Notification rules") }}{% endblock %}
+{% block crumb %}{{ t("Triggers, audiences and message templates — configurable without a code change") }}{% endblock %}
+
+{% block content %}
+<div class="card">
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>{{ t("Rule") }}</th><th>{{ t("Trigger") }}</th><th>{{ t("Value") }}</th><th>{{ t("Audience") }}</th><th>{{ t("Channel") }}</th><th>{{ t("Active") }}</th><th class="num">{{ t("Sent") }}</th></tr></thead>
+      <tbody>
+      {% for r in rules %}
+        <tr>
+          <td class="small"><strong>{{ r.name }}</strong>
+            <div class="tiny muted">{{ r.template | truncate(90) }}</div>
+          </td>
+          <td class="small">{{ r.trigger_type.replace('_', ' ') }}</td>
+          <td class="small">{{ r.trigger_value or '—' }}</td>
+          <td class="small">{{ r.audience_role }}</td>
+          <td class="small">{{ r.channel }}</td>
+          <td>{% if r.is_active %}<span class="pill green">{{ t("On") }}</span>{% else %}<span class="pill grey">{{ t("Off") }}</span>{% endif %}</td>
+          <td class="num">{{ r.logs | length }}</td>
+        </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  <div class="card-body">
+    <details class="inline-add" style="border:none;padding:0">
+      <summary>{{ t("Add a rule") }}</summary>
+      <form method="post" style="margin-top:.6rem">
+        <div class="grid c3">
+          <div class="field" style="grid-column:span 2"><label>{{ t("Name") }}</label><input type="text" name="name" required></div>
+          <div class="field">
+            <label>{{ t("Trigger type") }}</label>
+            <select name="trigger_type">
+              {% for t in ['stage_reached','eta_within_days','delay','missing_document','payment_overdue','po_overdue','quote_pending','digest'] %}
+                <option value="{{ t }}">{{ t.replace('_', ' ') }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="field">
+            <label>{{ t("Trigger value") }}</label>
+            <input type="text" name="trigger_value" placeholder="stage code, or number of days">
+          </div>
+          <div class="field">
+            <label>{{ t("Audience role") }}</label>
+            <select name="audience_role">
+              {% for r in roles %}<option value="{{ r.code }}">{{ r.role_name }}</option>{% endfor %}
+            </select>
+          </div>
+          <div class="field">
+            <label>{{ t("Channel") }}</label>
+            <select name="channel">
+              <option value="email">Email</option>
+              <option value="in_app">In app</option>
+              <option value="sms">SMS</option>
+            </select>
+          </div>
+        </div>
+        <div class="field" style="margin-top:.6rem">
+          <label>{{ t("Template") }}</label>
+          <textarea name="template" rows="2"
+            placeholder="Use placeholders: {reference_no} {brand} {eta} {stage} {customers} {missing} {days}"></textarea>
+        </div>
+        <div class="field" style="margin-top:.5rem;max-width:160px">
+          <label>{{ t("Active") }}</label>
+          <select name="is_active"><option value="1" selected>Yes</option><option value="">No</option></select>
+        </div>
+        <div class="btn-row mt1"><button class="btn sm" type="submit">{{ t("Save rule") }}</button></div>
+      </form>
+    </details>
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-body">
+    <h3>{{ t("Available stage codes") }}</h3>
+    <div class="small muted">
+      {% for code, label in stages %}<span class="pill grey" style="margin:0 .15rem .2rem 0">{{ code }}</span>{% endfor %}
+    </div>
+  </div>
+</div>
+{% endblock %}

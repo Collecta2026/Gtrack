@@ -1,0 +1,378 @@
+# Gtrack — Import & Equipment Tracking
+
+A working test build of the data design, implementing the full specification: purchase
+order through to installation handover, with document upload, per-shipment costing,
+freight quotations, serial-number tracking and customer allocation.
+
+Built on the same stack as Collecta — Flask, SQLAlchemy, Jinja2 — so it deploys the same
+way. SQLite by default so it runs with no database server; switch to Postgres with one
+environment variable.
+
+---
+
+## Installing and running it
+
+You need Python 3.10 or newer. Check with `py --version` (Windows) or `python3 --version`.
+If it is missing, install it from python.org — on Windows, tick **"Add Python to PATH"**
+during setup.
+
+### Windows
+
+1. Unzip `gtrack.zip` anywhere, e.g. your Downloads folder.
+2. Open the extracted folder and go in until you can see `run.py` and
+   `start_windows.bat` side by side.
+3. Double-click **`start_windows.bat`**.
+4. Wait for it to finish installing and seeding — a minute or two the first time.
+5. Open **http://127.0.0.1:5000** in your browser.
+6. Sign in as `zak@scientificgate.test` with the password `demo1234`, or click "Use"
+   beside any other account to see that role's view.
+
+Leave the black window open while you use it — that is the server. Close it or press
+`Ctrl+C` to stop. To start it again later, double-click the same file; it keeps the
+database you already have.
+
+### macOS / Linux
+
+```bash
+unzip gtrack.zip && cd gtrack
+./start.sh
+```
+
+Then open http://127.0.0.1:5000.
+
+### Doing it manually
+
+From the folder containing `run.py`:
+
+```bash
+pip install -r requirements.txt
+python seed.py         # builds the database from the spreadsheet
+python run.py          # starts the server
+```
+
+`requirements.txt` is the local set — pure Python, no compiler needed.
+`requirements-deploy.txt` adds gunicorn and the Postgres driver, and is only used when
+deploying to Render or Docker.
+
+On Windows use `py` instead of `python` if the latter isn't recognised. If you would
+rather not install packages system-wide:
+
+```bash
+py -m venv venv
+venv\Scripts\activate        # Windows
+source venv/bin/activate      # macOS / Linux
+pip install -r requirements.txt
+```
+
+### If something goes wrong
+
+**"The database has no Gtrack tables yet"** — run `python seed.py` first.
+
+**"Cannot reach the database"** — Gtrack is pointed at an external database. Clear it for
+this window with `set GTRACK_DATABASE_URL=` (Windows) or `unset GTRACK_DATABASE_URL`
+(macOS/Linux) and it will fall back to the local SQLite file.
+
+**A package fails to build / "pg_config is required"** — you are installing the server
+requirements. Gtrack itself needs no compiler: install `requirements.txt`, not
+`requirements-deploy.txt`. The Postgres driver is only needed when deploying.
+
+**Port 5000 already in use** — run on another port: `set PORT=5050` then `python run.py`.
+
+**Windows Firewall prompt** — you can decline it. `127.0.0.1` works either way; allowing
+it only matters if you want to reach Gtrack from another device on your network.
+
+### Test accounts
+
+Every account uses the password **demo1234**. Each role sees a different slice of the
+system — sign in as more than one to see the access model working.
+
+| Email | Role | What they see |
+|---|---|---|
+| `zak@scientificgate.test` | Administrator | Everything |
+| `amr@scientificgate.test` | Management (CEO/CFO) | Full read + dashboards, no admin |
+| `procurement@scientificgate.test` | Procurement Officer | POs, supplier invoices, suppliers |
+| `logistics@scientificgate.test` | Logistics & Customs | Shipments, stages, documents, Form 4 |
+| `finance@scientificgate.test` | Finance / Treasury | Costs, payments, bank registration |
+| `sales1@scientificgate.test` | Sales Account Manager | **Only their own customers' shipments** |
+| `sales2@scientificgate.test` | Sales Account Manager | A different customer portfolio |
+| `warehouse@scientificgate.test` | Warehouse Officer | Receipt, condition, serials |
+
+Sign in as `sales1` to see the point of the whole system: the account manager sees where
+each of their customers' machines is, and nothing else.
+
+---|---|---|
+| `zak@scientificgate.test` | Administrator | Everything |
+| `amr@scientificgate.test` | Management (CEO/CFO) | Full read + dashboards, no admin |
+| `procurement@scientificgate.test` | Procurement Officer | POs, supplier invoices, suppliers |
+| `logistics@scientificgate.test` | Logistics & Customs | Shipments, stages, documents, Form 4 |
+| `finance@scientificgate.test` | Finance / Treasury | Costs, payments, bank registration |
+| `sales1@scientificgate.test` | Sales Account Manager | **Only their own customers' shipments** |
+| `sales2@scientificgate.test` | Sales Account Manager | A different customer portfolio |
+| `warehouse@scientificgate.test` | Warehouse Officer | Receipt, condition, serials |
+
+Sign in as `sales1` to see the point of the whole system: the account manager sees where
+each of their customers' machines is, and nothing else.
+
+---
+
+## What's in the seeded data
+
+`seed.py` migrates the real **Shipments Tracking.xlsx** following Section 10 of the design
+document, then adds a demo layer for the parts the spreadsheet never captured.
+
+Migrated from the spreadsheet:
+
+- **116 shipments**, every row preserved
+- **18 suppliers, 45 brands, 32 carriers, 5 consignee entities** — extracted and
+  de-duplicated (spelling and spacing variants collapsed into one record each)
+- Weight, quantity, invoice value and shipping cost **split from their embedded units and
+  currency symbols** into proper numeric fields
+- Free-text status **mapped onto the twelve-stage pipeline**; the original text is kept in
+  `legacy_status` so nothing is lost
+- Shipping and customs costs **split into individual cost lines**, with payment status read
+  from the old Paid/Shipper and Paid/Customs notes (including the Arabic ones)
+- **Form 4** records, including the "IN < 2000$" cases recorded as threshold exemptions
+- Document checklists derived from the "DOC in Office" flag
+- Status history **reconstructed** from the invoice, clearance and arrival dates on each row
+- **Route classified from the pathway column** — 52 direct origin→Cairo imports, 9 stock legs
+  into the Jebel Ali fulfilment centre, 54 re-exports out of it, 1 outbound
+- **Al Bawaba typed as an internal Scientific Gate entity**, not a third-party supplier, so
+  intercompany movements are distinguishable from genuine external purchases (it is the
+  exporter on 57 shipments)
+- **Hub journeys linked** — re-exported item lines tied back to the inbound line they came
+  from, with 179 asset movements written across the legs
+
+Generated for the demo (the spreadsheet has none of this):
+
+- **191 serialised units** with warranty dates
+- **8 customers** with assigned sales owners, and ~118 allocations of specific machines
+- **26 purchase orders** with lines, and supplier invoices against them
+- **75 freight quotations** across competing forwarders, one selected per shipment
+- A scatter of internal comments, plus due dates on unpaid costs
+
+Because the spreadsheet is almost entirely historical ("Delivered"), the seed spreads the
+most recent shipments across the live pipeline stages so the board and dashboard have
+something to show. Older records keep their migrated state untouched.
+
+To rebuild at any time: `python seed.py` (destructive). `python seed.py --keep` only seeds
+an empty database.
+
+---
+
+## What's implemented
+
+Everything in the specification, organised as it is in the document.
+
+**Procurement** — purchase orders with lines and status workflow, part-shipment tracking
+(ordered vs shipped vs outstanding per line), supplier invoices linked to both PO and
+shipment, automatic overdue-PO alerting.
+
+**Quotation & booking** — multiple competing quotations per shipment, one marked selected,
+and a quoted-vs-actual variance report. Both sides are converted to EGP before comparison,
+because quotes come in USD and freight invoices often arrive in EGP.
+
+**Shipment tracking** — the twelve-stage pipeline, every stage timestamped and attributed
+in Status History; list view with filters and free search; Kanban pipeline board;
+planned-vs-actual dates with automatic delay flags and days-in-stage ageing.
+
+**Routing & the fulfilment centre** — each shipment typed as direct, inbound to the
+fulfilment centre, re-export from it, an internal transfer or outbound, with from/to
+locations held against SGE's own facilities. The exporter is recorded separately from the
+supplier, because on a re-export leg the shipper is SGE's own free-zone entity while the
+original manufacturers stay on the item lines. A **Fulfilment centre stock** screen shows
+what is held in the free zone, what has been called forward against orders, the balance,
+its value and how long it has been sitting there.
+
+**Customs** — ACID capture, bill type (master/house), the customs broker handling it, and
+bank registration. Banking records **accumulate** rather than overwrite — a shipment
+part-paid in advance and part against documents produces more than one, each with its own
+advance payment reference, two SWIFT references, amount, currency and transfer date.
+Threshold exemptions recorded with the reason; HS codes held at item level.
+
+**Documents** — real file upload per shipment, a required/received checklist per document
+type, version increment on replacement, download with audit trail.
+
+**Costing** — sixteen cost categories, each line with currency, payee, **who paid it**
+(us, the forwarder or the supplier), payment status and due date; multi-currency conversion
+to EGP; overdue flagging; payables reporting. On a re-export leg the statement carries
+forward the share of the **inbound leg's** freight, duty and handling that belongs to those
+units, giving a **true landed total** across every leg — costing the re-export on its own
+would understate what the machine actually cost to land in Cairo.
+
+**Equipment & allocation** — serial-number-level asset records; allocation of a specific
+unit (or a quantity of a bulk item) to a named customer at any stage; warranty register;
+installation confirmation; allocation backlog and per-customer views.
+
+**Notifications** — nine configurable rules covering stage-reached, ETA countdown, delay,
+missing documents, overdue payment, overdue PO and a weekly digest. Sales alerts route
+only to the account manager who owns an allocated customer on that shipment, not the whole
+team. Rules are editable in the admin screen without a code change.
+
+**Reporting** — transit and clearance timing by mode and lane, on-time performance, cost
+per shipment and per kg, cost by category, brand and supplier performance, ageing,
+document gaps, equipment by status, value in transit by currency, plus a **direct versus
+fulfilment centre** comparison (cost as a share of goods value, cost per kilogram, transit
+and clearance time by route) and a **date anomalies** list. Every table exports to CSV,
+Excel and PDF.
+
+**Data quality** — rows migrated from the spreadsheet sometimes carry dates that cannot both
+be true (departure after arrival, customs release before arrival). Those transit and
+clearance times read as *unknown* rather than being counted as negative, so no average is
+skewed, and the affected shipments are listed in Reports and flagged on their own page for
+correction at source.
+
+**Access & audit** — seven roles with per-permission scoping; sales users are restricted at
+the query level to shipments carrying their own customers' allocations; a full audit log
+capturing every field-level change with the user who made it.
+
+---
+
+## Testing
+
+```bash
+python test_smoke.py
+```
+
+Exercises every screen as every role, all export formats, the main workflows (stage
+advance, serial capture, allocation, installation confirmation, costs, quotations, Form 4)
+and the access-control boundaries — including the two-step route through the fulfilment
+centre, hub traceability, the accumulating banking records, the new item and header fields,
+role scoping on the stock view, and a guard that no translation key ever leaks onto a page.
+235 checks; safe to run repeatedly, and verified against both SQLite and real PostgreSQL.
+
+---
+
+## Bilingual — English and Arabic
+
+A language toggle sits at the bottom of the sidebar (**EN / ع**). Switching flips the whole
+interface, including a proper right-to-left layout: the sidebar moves to the right, tables
+and text align right, and numbers, references and codes stay left-to-right so they remain
+readable. Dates use Arabic month names with Western digits, as Egyptian commercial documents
+do.
+
+The choice is saved on the user's account, so each person gets their own language wherever
+they sign in — the Cairo team can work in Arabic while you work in English, on the same data.
+
+Translation covers the navigation, every screen, the twelve stages, roles, document and cost
+types, statuses, and the whole help guide. Data you enter — supplier names, product
+descriptions, comments — is shown exactly as typed, in whichever language it was written.
+Anything without an Arabic entry falls back to English rather than breaking, so adding a
+translation later is a one-line change in `app/i18n.py`.
+
+---
+
+## What's new in this build
+
+**The two-step supply route** — shipments can now run origin → Jebel Ali fulfilment centre
+→ Cairo as well as straight from origin, with the two legs linked so a machine's whole
+journey, and its whole cost, stays in one place. A re-export leg routinely consolidates
+items from several original manufacturers; each item line keeps its own supplier, brand,
+category, invoice reference, declared and actual values, weights and dimensions.
+
+**Fulfilment centre stock** — what is held in the free zone, what has been called forward,
+the balance, its value, and how long it has been sitting there, with a dashboard tile and
+a days-held ageing scale.
+
+**Locations and customs brokers** as master data, suppliers typed by party (manufacturer,
+trading supplier, internal entity, freight agent), and every master-data record now
+editable in place.
+
+**Global search** — one box on every page that finds a shipment by any reference: shipment
+number, ACID, BL/AWB, PO number, supplier invoice, machine serial, product, model, HS code,
+quotation reference, Form 4 registration, or a customer, supplier or forwarder name. Results
+show which reference matched so you can see why something appeared. Respects role scoping.
+
+**Cost & contents statement** — a per-shipment page (the Statement button) tracing every cost
+booked against it, listing every item with serial numbers and allocations, and apportioning
+the costs across the lines to give a landed cost per unit. Exports to PDF and Excel.
+
+**Help & guide** — an in-app guide covering every menu item, the twelve stages, roles,
+common workflows and a glossary of ACID, Form 4, FCL/LCL, incoterms and landed cost.
+
+**Production-ready for Neon** — TLS enforced, connection pre-ping and recycle tuned for
+Neon's serverless idle timeout, an environment template, and a `check_db.py` utility to
+verify a connection before deploying. Tested against real PostgreSQL, not only SQLite.
+
+---
+
+## Deployment
+
+**See `DEPLOY.md`** for the full step-by-step runbook: Neon database, GitHub repo, Render
+blueprint, seeding production, and the `gtrack.awspro.uk` CNAME with SSL — including the
+gotchas that caught out the Collecta deployment.
+
+In short: push to GitHub, then New → Blueprint in Render pointed at `render.yaml`, set
+`GTRACK_DATABASE_URL` to the Neon **pooled** connection string, deploy, then run
+`python seed.py --force` once from the Render shell.
+
+**Docker**
+
+```bash
+docker build -t gtrack .
+docker run -p 8000:8000 gtrack
+```
+
+**Environment variables**
+
+| Variable | Purpose |
+|---|---|
+| `GTRACK_DATABASE_URL` | Postgres URI. Unset → SQLite in `instance/` |
+| `GTRACK_SECRET_KEY` | Session signing key — set this in production |
+| `GTRACK_UPLOAD_FOLDER` | Where uploaded documents are stored |
+| `GTRACK_ORG_NAME` | Organisation name shown in the interface |
+| `GTRACK_NOTIFICATIONS_LIVE` | `1` to send notifications rather than log them |
+
+Every variable is prefixed `GTRACK_` on purpose. Gtrack deliberately ignores the generic
+`DATABASE_URL`: a machine already running other Flask apps usually has that set for one of
+them, and inheriting it would silently point Gtrack at another application's database.
+Seeding also refuses to run against anything but a local SQLite file unless you pass
+`--force`, because it drops and recreates its tables.
+
+---
+
+## Notes and limitations
+
+This is a test build, so a few things are deliberately stubbed:
+
+- **Notifications are written to the log, not emailed.** The rule engine, audience routing
+  and templates are all real; only the SMTP delivery step is missing. Set
+  `GTRACK_NOTIFICATIONS_LIVE=1` and add a mail backend in `notifications.py` to send for real.
+- **The rule sweep runs on demand**, via the button on the dashboard, rather than on a
+  schedule. In production it would be a cron job or a Render scheduled task.
+- **Exchange rates are indicative and hard-coded** in `config.py`. The `ExchangeRate` table
+  exists for a dated series when you want live rates.
+- **Serial numbers, customers and allocations are demo data.** The spreadsheet has none, so
+  these were generated to exercise the features — they are not real SGE records.
+- Costs migrated from the spreadsheet inherit its ambiguity: where the old sheet recorded a
+  payment as a free-text note, the migration takes a best-effort reading of paid/unpaid.
+- **Route type is inferred from the pathway column**, not stated in the source sheet. The
+  inference is deterministic and visible on every shipment, so a wrong call is a one-click
+  correction on the shipment's edit page rather than a data problem.
+- **Earlier-leg costs are apportioned by value**, the same basis as within a single
+  shipment. Where a re-export draws on only part of an inbound line, it carries that line's
+  cost per unit multiplied by the quantity called forward.
+
+---
+
+## Layout
+
+```
+gtrack/
+├── run.py                 # dev server
+├── wsgi.py                # gunicorn entry point
+├── seed.py                # spreadsheet migration + demo data
+├── test_smoke.py          # end-to-end tests
+├── config.py
+├── data/
+│   └── Shipments_Tracking.xlsx
+└── app/
+    ├── models.py          # all 28 tables
+    ├── i18n.py            # English / Arabic dictionary and RTL helpers
+    ├── auth.py            # roles, permissions, scoping
+    ├── audit.py           # automatic change logging
+    ├── notifications.py   # rule engine
+    ├── exports.py         # CSV / Excel / PDF
+    ├── views/             # dashboard, shipments, POs, finance, assets, masters, reports, admin
+    ├── templates/
+    └── static/
+```

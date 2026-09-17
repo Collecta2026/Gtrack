@@ -1,0 +1,36 @@
+# Gtrack — Render blueprint (same deployment pattern as Collecta).
+# Push this repo to GitHub, then "New > Blueprint" in Render and point it here.
+services:
+  - type: web
+    name: gtrack
+    runtime: python
+    plan: starter                 # always-on, as used for Collecta
+    buildCommand: pip install -r requirements-deploy.txt
+    startCommand: gunicorn wsgi:app --bind 0.0.0.0:$PORT --workers 2 --timeout 120
+    healthCheckPath: /login
+    envVars:
+      - key: GTRACK_SECRET_KEY
+        generateValue: true
+      # Gtrack reads its own variable, never the generic DATABASE_URL.
+      - key: GTRACK_DATABASE_URL
+        fromDatabase:
+          name: gtrack-db
+          property: connectionString
+      - key: GTRACK_UPLOAD_FOLDER
+        value: /var/data/uploads
+      - key: GTRACK_ORG_NAME
+        value: Scientific Gate Egypt
+      - key: GTRACK_NOTIFICATIONS_LIVE
+        value: "0"
+      - key: PYTHON_VERSION
+        value: "3.11.9"
+    disk:
+      name: uploads
+      mountPath: /var/data
+      sizeGB: 5
+
+databases:
+  - name: gtrack-db
+    plan: basic-256mb
+    databaseName: gtrack
+    user: gtrack

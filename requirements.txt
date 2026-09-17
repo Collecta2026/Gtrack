@@ -1,0 +1,10 @@
+# Gtrack — everything needed to run locally on SQLite.
+# Minimum versions rather than hard pins, so pip can pick a wheel that matches
+# your Python version instead of trying to compile from source.
+Flask>=3.0
+Flask-SQLAlchemy>=3.1
+Flask-Login>=0.6.3
+SQLAlchemy>=2.0
+Werkzeug>=3.0
+openpyxl>=3.1
+reportlab>=4.0

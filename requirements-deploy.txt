@@ -1,0 +1,6 @@
+# Gtrack — extras needed only when deploying to a server (Render / Docker).
+# Not required for local testing on SQLite, and deliberately kept out of
+# requirements.txt because psycopg2 needs Postgres build tooling on Windows.
+-r requirements.txt
+gunicorn>=23.0
+psycopg2-binary>=2.9.9

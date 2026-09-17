@@ -1,0 +1,75 @@
+{% extends "base.html" %}
+{% block heading %}{{ t("Shipment costs") }}{% endblock %}
+{% block crumb %}{{ lines | length }} cost line(s) · all values converted to {{ base_currency }}{% endblock %}
+
+{% block actions %}
+  <a class="btn ghost sm" href="{{ url_for('finance.costs', export='xlsx', **filters) }}">{{ t("Excel") }}</a>
+  <a class="btn ghost sm" href="{{ url_for('finance.costs', export='csv', **filters) }}">{{ t("CSV") }}</a>
+  <a class="btn ghost sm" href="{{ url_for('finance.costs', export='pdf', **filters) }}">{{ t("PDF") }}</a>
+{% endblock %}
+
+{% block content %}
+
+<div class="tiles">
+  <div class="tile"><div class="lab">{{ t("Total cost") }}</div><div class="val">{{ totals.total | money }}</div><div class="sub">{{ base_currency }}</div></div>
+  <div class="tile warn"><div class="lab">{{ t("Unpaid") }}</div><div class="val">{{ totals.unpaid | money }}</div><div class="sub">{{ base_currency }}</div></div>
+  <div class="tile amber"><div class="lab">{{ t("Partial") }}</div><div class="val">{{ totals.partial | money }}</div><div class="sub">{{ base_currency }}</div></div>
+  <div class="tile warn"><div class="lab">{{ t("Overdue") }}</div><div class="val">{{ totals.overdue | money }}</div><div class="sub">{{ totals.overdue_count }} line(s)</div></div>
+</div>
+
+<div class="card">
+  <div class="card-body tight">
+    <form method="get" class="filters">
+      <div class="field">
+        <label>{{ t("Payment status") }}</label>
+        <select name="status" onchange="this.form.submit()">
+          <option value="">All</option>
+          {% for code, label in payment_statuses %}
+            <option value="{{ code }}" {{ 'selected' if filters.status == code }}>{{ label }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="field">
+        <label>{{ t("Cost type") }}</label>
+        <select name="cost_type" onchange="this.form.submit()">
+          <option value="">All</option>
+          {% for code, label in cost_types %}
+            <option value="{{ code }}" {{ 'selected' if filters.cost_type == code }}>{{ label }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="btn-row"><a class="btn ghost sm" href="{{ url_for('finance.costs') }}">{{ t("Reset") }}</a></div>
+    </form>
+  </div>
+</div>
+
+<div class="card">
+  {% if lines %}
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>{{ t("Shipment") }}</th><th>{{ t("Type") }}</th><th>{{ t("Description") }}</th><th class="num">{{ t("Amount") }}</th>
+        <th class="num">{{ base_currency }}</th><th>{{ t("Payable to") }}</th><th>{{ t("Status") }}</th><th>{{ t("Due") }}</th></tr></thead>
+      <tbody>
+      {% for c in lines %}
+        <tr>
+          <td class="nowrap small">
+            {% if c.shipment %}<a href="{{ url_for('shipments.detail', shipment_id=c.shipment.id) }}">{{ c.shipment.reference_no }}</a>{% else %}—{% endif %}
+          </td>
+          <td class="small">{{ c.type_label }}</td>
+          <td class="small">{{ c.description or '—' }}</td>
+          <td class="num small">{{ c.amount | money(c.currency) }}</td>
+          <td class="num small">{{ c.amount_base | money }}</td>
+          <td class="small">{{ c.payable_to or '—' }}</td>
+          <td><span class="pill {{ 'green' if c.payment_status == 'paid' else 'amber' if c.payment_status == 'partial' else 'red' }}">{{ c.payment_status_label }}</span></td>
+          <td class="small nowrap">
+            {{ c.due_date | shortdate }}
+            {% if c.is_overdue %}<span class="pill red">{{ t("overdue") }}</span>{% endif %}
+          </td>
+        </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}<div class="empty">{{ t("No cost lines match this filter.") }}</div>{% endif %}
+</div>
+{% endblock %}

@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+{% block heading %}{{ t("Supplier invoices") }}{% endblock %}
+{% block crumb %}{{ invoices | length }} invoice(s){% endblock %}
+
+{% block actions %}
+  <a class="btn ghost sm" href="{{ url_for('finance.invoices', export='xlsx') }}">{{ t("Excel") }}</a>
+  <a class="btn ghost sm" href="{{ url_for('finance.invoices', export='pdf') }}">{{ t("PDF") }}</a>
+{% endblock %}
+
+{% block content %}
+<div class="card">
+  {% if invoices %}
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>{{ t("Invoice no") }}</th><th>{{ t("Date") }}</th><th>{{ t("Purchase order") }}</th><th>{{ t("Shipment") }}</th>
+        <th class="num">{{ t("Value") }}</th><th>{{ t("Status") }}</th></tr></thead>
+      <tbody>
+      {% for i in invoices %}
+        <tr>
+          <td class="small"><strong>{{ i.invoice_no or '—' }}</strong></td>
+          <td class="small nowrap">{{ i.invoice_date | shortdate }}</td>
+          <td class="small">
+            {% if i.po %}<a href="{{ url_for('purchase_orders.detail', po_id=i.po.id) }}">{{ i.po.po_number }}</a>{% else %}—{% endif %}
+          </td>
+          <td class="small">
+            {% if i.shipment %}<a href="{{ url_for('shipments.detail', shipment_id=i.shipment.id) }}">{{ i.shipment.reference_no }}</a>{% else %}—{% endif %}
+          </td>
+          <td class="num small">{{ i.invoice_value | money(i.currency) }}</td>
+          <td><span class="pill {{ 'green' if i.payment_status == 'paid' else 'amber' if i.payment_status == 'partial' else 'red' }}">{{ i.payment_status_label }}</span></td>
+        </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}<div class="empty">{{ t("No supplier invoices recorded.") }}</div>{% endif %}
+</div>
+{% endblock %}

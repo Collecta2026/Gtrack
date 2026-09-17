@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Sign in · Gtrack</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+<div class="login-wrap">
+  <div class="login-card">
+    <div class="login-left">
+      <div class="eyebrow">Scientific Gate Egypt</div>
+      <h1>Gtrack</h1>
+      <div class="tag" style="margin-bottom:.9rem">Import &amp; Equipment Tracking</div>
+      <div class="tag">Internal system — purchase order through to installation handover.</div>
+
+      {% with messages = get_flashed_messages(with_categories=true) %}
+        {% for category, message in messages %}
+          <div class="flash {{ category }}">{{ message }}</div>
+        {% endfor %}
+      {% endwith %}
+
+      <form method="post">
+        <div class="field" style="margin-bottom:.7rem">
+          <label for="email">{{ t("Email") }}</label>
+          <input type="email" id="email" name="email" required autofocus
+                 value="{{ request.args.get('as', '') }}">
+        </div>
+        <div class="field" style="margin-bottom:1rem">
+          <label for="password">{{ t("Password") }}</label>
+          <input type="password" id="password" name="password" required value="demo1234">
+        </div>
+        <button class="btn" type="submit" style="width:100%">{{ t("Sign in") }}</button>
+      </form>
+    </div>
+
+    <div class="login-right">
+      <h3 style="margin-bottom:.2rem">{{ t("Test accounts") }}</h3>
+      <p class="tiny muted" style="margin-top:0;margin-bottom:.85rem">
+        Every account uses the password <strong>demo1234</strong>. Click one to fill the form —
+        each role sees a different slice of the system.
+      </p>
+      {% for u in demo_users %}
+        <div class="demo-user">
+          <div>
+            <div>{{ u.name }}</div>
+            <div class="du-role">{{ u.role.role_name if u.role }}</div>
+          </div>
+          <button class="btn ghost sm" type="button"
+                  onclick="document.getElementById('email').value='{{ u.email }}';document.getElementById('password').value='demo1234';">
+            {{ t("Use") }}
+          </button>
+        </div>
+      {% endfor %}
+    </div>
+  </div>
+</div>
+</body>
+</html>
