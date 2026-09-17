@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+{% block heading %}{{ t("Pipeline & ageing") }}{% endblock %}
+{% block crumb %}{{ t("Reports & KPIs") }} · {{ open_count }} {{ t("open") }}{% endblock %}
+
+{% block content %}
+
+{% include "reports/_subnav.html" %}
+
+<div class="grid c2" style="align-items:start">
+
+  <div class="card">
+    <div class="card-head"><h2>{{ t("Open pipeline") }}</h2></div>
+    <div class="card-body">
+      {% set maxc = pipeline | map(attribute='count') | max %}
+      {% for row in pipeline %}
+        <div class="bar-row">
+          <div class="bl">{{ row.label }}</div>
+          <div class="bar-track"><div class="bar-fill" style="width:{{ (row.count / maxc * 100) if maxc else 0 }}%"></div></div>
+          <div class="bv">{{ row.count }}</div>
+        </div>
+      {% else %}<div class="empty">{{ t("Nothing open.") }}</div>{% endfor %}
+    </div>
+  </div>
+
+  <div class="card" style="grid-column:1 / -1">
+    <div class="card-head"><h2>{{ t("Ageing — longest in stage") }}</h2></div>
+    {% if ageing %}
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>{{ t("Shipment") }}</th><th>{{ t("Stage") }}</th><th>{{ t("Owner") }}</th><th class="num">{{ t("Days") }}</th></tr></thead>
+        <tbody>
+        {% for s in ageing %}
+          <tr>
+            <td class="small"><a href="{{ url_for('shipments.detail', shipment_id=s.id) }}">{{ s.reference_no }}</a></td>
+            <td class="small">{{ s.stage_label }}</td>
+            <td class="small muted">{{ s.stage_owner }}</td>
+            <td class="num"><span class="pill {{ 'red' if s.days_in_stage > 30 else 'amber' }}">{{ s.days_in_stage }}</span></td>
+          </tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}<div class="empty">{{ t("Nothing ageing.") }}</div>{% endif %}
+  </div>
+
+</div>
+{% endblock %}

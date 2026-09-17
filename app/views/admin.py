@@ -4,8 +4,9 @@ from datetime import date
 from flask import Blueprint, render_template, request, redirect, url_for, flash, abort
 from flask_login import login_required, current_user
 
-from ..models import (db, User, Role, NotificationRule, NotificationLog, AuditLog, Stage,
-                      ExchangeRate, FX_RATES)
+from ..models import (db, User, Role, Customer, PurchaseOrder, Shipment, AssetMovement,
+                      Allocation, StatusHistory, Document, Comment, NotificationRule,
+                      NotificationLog, AuditLog, Stage, ExchangeRate, FX_RATES)
 from ..auth import permission_required, PERMISSIONS, SYSTEM_ROLE_CODE
 from ..exports import export_response
 from ..i18n import t
@@ -46,9 +47,73 @@ def users():
         flash(t("User saved."), "success")
         return redirect(url_for("admin.users"))
 
-    return render_template("admin/users.html",
-                           users=User.query.order_by(User.id).all(),
-                           roles=Role.query.order_by(Role.id).all())
+    all_users = User.query.order_by(User.id).all()
+    return render_template("admin/users.html", users=all_users,
+                           roles=Role.query.order_by(Role.id).all(),
+                           has_history={u.id: _user_has_history(u.id) for u in all_users})
+
+
+# Every table that records who did something, keyed by (model, column name) — this is
+# what "has this user left a footprint" checks against before a hard delete is allowed.
+_USER_FOOTPRINT_TABLES = [
+    (Customer, "sales_owner_id"),
+    (PurchaseOrder, "created_by_id"),
+    (Shipment, "created_by_id"),
+    (AssetMovement, "recorded_by_id"),
+    (Allocation, "allocated_by_id"),
+    (StatusHistory, "recorded_by_id"),
+    (Document, "uploaded_by_id"),
+    (Comment, "user_id"),
+    (NotificationLog, "recipient_id"),
+    (AuditLog, "changed_by_id"),
+]
+
+
+def _user_has_history(user_id):
+    """True if this user is referenced anywhere — a shipment they created, a comment
+    they left, a notification sent to them, and so on. Deleting a user with history
+    would either fail on a foreign-key constraint or silently orphan those records, so
+    this is what decides whether Delete is offered or Admin -> Users points to
+    deactivating the account instead."""
+    for model, column in _USER_FOOTPRINT_TABLES:
+        if db.session.query(getattr(model, column)).filter(
+                getattr(model, column) == user_id).first():
+            return True
+    return False
+
+
+@bp.route("/users/<int:user_id>/delete", methods=["POST"])
+@permission_required("*")
+def delete_user(user_id):
+    user = db.session.get(User, user_id)
+    if user is None:
+        abort(404)
+
+    if user.id == current_user.id:
+        flash(t("You can't delete your own account while signed in as it."), "error")
+        return redirect(url_for("admin.users"))
+
+    # Never delete the last active user who can manage the system — that would lock
+    # everyone out of Admin permanently, with no one able to undo it.
+    if user.role and user.role.has("*"):
+        other_full_access = User.query.join(Role).filter(
+            User.id != user.id, User.is_active_flag.is_(True), Role.permissions == "*").count()
+        if other_full_access == 0:
+            flash(t("Can't delete the last user with full access — "
+                    "create another admin account first, or deactivate this one instead."),
+                  "error")
+            return redirect(url_for("admin.users"))
+
+    if _user_has_history(user.id):
+        flash(t("This user has activity on record (shipments, comments, notifications or "
+                "similar) — deleting them would break that history. Set them to Inactive "
+                "instead: edit the account and switch Active to No."), "error")
+        return redirect(url_for("admin.users"))
+
+    db.session.delete(user)
+    db.session.commit()
+    flash(t("User deleted."), "success")
+    return redirect(url_for("admin.users"))
 
 
 def _unique_role_code(base):

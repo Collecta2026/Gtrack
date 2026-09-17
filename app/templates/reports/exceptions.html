@@ -1,0 +1,71 @@
+{% extends "base.html" %}
+{% block heading %}{{ t("Exceptions") }}{% endblock %}
+{% block crumb %}{{ t("Reports & KPIs") }}{% endblock %}
+
+{% block content %}
+
+{% include "reports/_subnav.html" %}
+
+<div class="grid c2" style="align-items:start">
+
+  <div class="card">
+    <div class="card-head"><h2>{{ t("Document gaps") }}</h2></div>
+    {% if incomplete %}
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>{{ t("Shipment") }}</th><th>{{ t("Stage") }}</th><th>{{ t("Missing") }}</th><th class="num">{{ t("Complete") }}</th></tr></thead>
+        <tbody>
+        {% for s in incomplete %}
+          <tr>
+            <td class="small"><a href="{{ url_for('shipments.detail', shipment_id=s.id) }}">{{ s.reference_no }}</a></td>
+            <td class="small">{{ s.stage_label }}</td>
+            <td class="small muted">{{ s.missing_documents | join(', ') | replace('_', ' ') }}</td>
+            <td class="num"><span class="pill amber">{{ s.doc_completeness }}%</span></td>
+          </tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}<div class="empty">{{ t("Every open shipment has its required documents.") }}</div>{% endif %}
+  </div>
+
+  <div class="card" style="grid-column:1 / -1">
+    <div class="card-head">
+      <h2>{{ t("Date anomalies") }}</h2>
+      <span class="tiny muted">{{ t("dates that cannot both be true — excluded from the timing averages") }}</span>
+    </div>
+    {% if anomalies %}
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>{{ t("Shipment") }}</th><th>{{ t("Problem") }}</th>
+          <th>{{ t("ETD") }}</th><th>{{ t("ETA") }}</th>
+          <th>{{ t("Actual departure") }}</th><th>{{ t("Actual arrival") }}</th>
+          <th>{{ t("Cleared") }}</th><th>{{ t("Warehouse") }}</th></tr></thead>
+        <tbody>
+        {% for row in anomalies %}
+          <tr>
+            <td class="small"><a href="{{ url_for('shipments.detail', shipment_id=row.shipment.id) }}"><strong>{{ row.shipment.reference_no }}</strong></a></td>
+            <td class="small">
+              {% for p in row.problems %}<div class="tiny"><span class="pill amber">{{ p }}</span></div>{% endfor %}
+            </td>
+            <td class="small nowrap">{{ row.shipment.etd | shortdate }}</td>
+            <td class="small nowrap">{{ row.shipment.eta | shortdate }}</td>
+            <td class="small nowrap">{{ row.shipment.actual_departure | shortdate }}</td>
+            <td class="small nowrap">{{ row.shipment.actual_arrival | shortdate }}</td>
+            <td class="small nowrap">{{ row.shipment.clearance_date | shortdate }}</td>
+            <td class="small nowrap">{{ row.shipment.warehouse_date | shortdate }}</td>
+          </tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    <div class="card-body tight">
+      <div class="tiny muted">
+        {{ t("These rows came across from the spreadsheet with contradictory dates. Their transit and clearance times are treated as unknown rather than counted as negative, so the averages above stay honest. Correcting the dates on the shipment removes it from this list.") }}
+      </div>
+    </div>
+    {% else %}<div class="empty">{{ t("No contradictory dates recorded.") }}</div>{% endif %}
+  </div>
+
+</div>
+{% endblock %}

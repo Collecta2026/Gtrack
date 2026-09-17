@@ -1,0 +1,58 @@
+{% extends "base.html" %}
+{% block heading %}{{ t("Brands & suppliers") }}{% endblock %}
+{% block crumb %}{{ t("Reports & KPIs") }}{% endblock %}
+
+{% block content %}
+
+{% include "reports/_subnav.html" %}
+
+<div class="grid c2" style="align-items:start">
+
+  <div class="card">
+    <div class="card-head"><h2>{{ t("By brand") }}</h2></div>
+    {% if brand_stats %}
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>{{ t("Brand") }}</th><th class="num">{{ t("Shipments") }}</th><th class="num">{{ t("Goods value") }}</th>
+          <th class="num">{{ t("Cost") }} ({{ base_currency }})</th><th class="num">{{ t("Avg transit") }}</th></tr></thead>
+        <tbody>
+        {% for b in brand_stats %}
+          <tr>
+            <td class="small">{{ b.brand }}</td>
+            <td class="num">{{ b.shipments }}</td>
+            <td class="num small">{{ b.value | money }}</td>
+            <td class="num small">{{ b.cost | money }}</td>
+            <td class="num small">{{ b.avg_transit if b.avg_transit is not none else '—' }}</td>
+          </tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}<div class="empty">{{ t("No brand data.") }}</div>{% endif %}
+  </div>
+
+  <div class="card">
+    <div class="card-head"><h2>{{ t("Supplier performance") }}</h2></div>
+    {% if supplier_stats %}
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>{{ t("Supplier") }}</th><th class="num">{{ t("Shipments") }}</th><th class="num">{{ t("Delayed") }}</th>
+          <th class="num">{{ t("Avg transit") }}</th><th class="num">{{ t("Lead time") }}</th></tr></thead>
+        <tbody>
+        {% for s in supplier_stats %}
+          <tr>
+            <td class="small">{{ s.supplier | truncate(32) }}</td>
+            <td class="num">{{ s.shipments }}</td>
+            <td class="num">{% if s.delayed %}<span class="pill red">{{ s.delayed }}</span>{% else %}—{% endif %}</td>
+            <td class="num small">{{ s.avg_transit if s.avg_transit is not none else '—' }}</td>
+            <td class="num small">{{ s.lead_time ~ 'd' if s.lead_time else '—' }}</td>
+          </tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}<div class="empty">{{ t("No supplier data.") }}</div>{% endif %}
+  </div>
+
+</div>
+{% endblock %}

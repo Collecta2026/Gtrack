@@ -10,7 +10,40 @@
       <tbody>
       {% for u in users %}
         <tr>
-          <td class="small"><strong>{{ u.name }}</strong></td>
+          <td class="small">
+            <details>
+              <summary><strong>{{ u.name }}</strong></summary>
+              <form method="post" style="margin-top:.5rem;min-width:240px">
+                <input type="hidden" name="id" value="{{ u.id }}">
+                <div class="field"><label>{{ t("Name") }}</label><input type="text" name="name" value="{{ u.name }}" required></div>
+                <div class="field"><label>{{ t("Email") }}</label><input type="email" name="email" value="{{ u.email }}" required></div>
+                <div class="field">
+                  <label>{{ t("Role") }}</label>
+                  <select name="role_id" required>
+                    {% for r in roles %}<option value="{{ r.id }}" {{ 'selected' if u.role_id == r.id }}>{{ r.role_name }}</option>{% endfor %}
+                  </select>
+                </div>
+                <div class="field"><label>{{ t("Phone") }}</label><input type="text" name="phone" value="{{ u.phone or '' }}"></div>
+                <div class="field"><label>{{ t("New password") }}</label><input type="text" name="password" placeholder="{{ t('leave blank to keep the current one') }}"></div>
+                <div class="field">
+                  <label>{{ t("Active") }}</label>
+                  <select name="is_active"><option value="1" {{ 'selected' if u.is_active }}>{{ t("Yes") }}</option><option value="" {{ 'selected' if not u.is_active }}>{{ t("No") }}</option></select>
+                </div>
+                <button class="btn sm ghost" type="submit">{{ t("Save") }}</button>
+              </form>
+              {% if u.id == current_user.id %}
+                <p class="tiny muted" style="margin-top:.5rem">{{ t("This is your own account — sign in as someone else to delete it.") }}</p>
+              {% elif has_history.get(u.id) %}
+                <p class="tiny muted" style="margin-top:.5rem">{{ t("Has activity on record, so it can't be deleted — set Active to No above instead.") }}</p>
+              {% else %}
+                <form method="post" action="{{ url_for('admin.delete_user', user_id=u.id) }}"
+                      style="margin-top:.5rem"
+                      onsubmit="return confirm({{ t('Delete {name}? This can\'t be undone.', name=u.name) | tojson }});">
+                  <button class="btn sm danger" type="submit">{{ t("Delete user") }}</button>
+                </form>
+              {% endif %}
+            </details>
+          </td>
           <td class="small">{{ u.email }}</td>
           <td class="small">{{ u.role.role_name if u.role else '—' }}</td>
           <td>{% if u.is_active %}<span class="pill green">{{ t("Active") }}</span>{% else %}<span class="pill grey">{{ t("Disabled") }}</span>{% endif %}</td>

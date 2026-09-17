@@ -65,6 +65,13 @@ tbody tr:hover{background:#f8fafc}
 .tile.good .val{color:var(--green)}
 .tile.amber .val{color:var(--amber)}
 
+/* ---------- report submenu ---------- */
+.subnav{display:flex;flex-wrap:wrap;gap:.3rem;margin-bottom:1.1rem;border-bottom:1px solid var(--line);padding-bottom:.1rem}
+.subnav a{display:inline-block;padding:.4rem .75rem;font-size:.8rem;font-weight:600;color:var(--muted);
+  border-bottom:2px solid transparent;border-radius:4px 4px 0 0}
+.subnav a:hover{color:var(--navy);text-decoration:none;background:rgba(0,0,0,.03)}
+.subnav a.active{color:var(--navy);border-bottom-color:var(--amber)}
+
 /* ---------- pills ---------- */
 .pill{display:inline-block;padding:.16rem .5rem;border-radius:99px;font-size:.7rem;font-weight:600;
   white-space:nowrap;border:1px solid transparent}

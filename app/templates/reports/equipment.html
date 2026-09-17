@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+{% block heading %}{{ t("Equipment & value") }}{% endblock %}
+{% block crumb %}{{ t("Reports & KPIs") }}{% endblock %}
+
+{% block content %}
+
+{% include "reports/_subnav.html" %}
+
+<div class="grid c2" style="align-items:start">
+
+  <div class="card">
+    <div class="card-head"><h2>{{ t("Equipment by status") }}</h2></div>
+    <div class="card-body">
+      {% set maxa = asset_status_counts.values() | max %}
+      {% for label, count in asset_status_counts.items() %}
+        <div class="bar-row">
+          <div class="bl">{{ label }}</div>
+          <div class="bar-track"><div class="bar-fill" style="width:{{ (count / maxa * 100) if maxa else 0 }}%"></div></div>
+          <div class="bv">{{ count }}</div>
+        </div>
+      {% else %}<div class="empty">{{ t("No serialised units.") }}</div>{% endfor %}
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-head"><h2>{{ t("Value in transit by currency") }}</h2></div>
+    <div class="card-body">
+      {% for code, value in value_by_currency.items() %}
+        <div class="bar-row">
+          <div class="bl">{{ code }}</div>
+          <div class="bar-track"><div class="bar-fill" style="width:100%"></div></div>
+          <div class="bv">{{ value | money }}</div>
+        </div>
+      {% else %}<div class="empty">{{ t("Nothing in transit.") }}</div>{% endfor %}
+    </div>
+  </div>
+
+</div>
+{% endblock %}

@@ -412,6 +412,26 @@ TRANSLATIONS.update(_d([
     ("Lane", "المسار"),
     ("Lead time", "مدة التوريد"),
     ("Full register (Excel)", "السجل الكامل (إكسل)"),
+    ("Overview", "نظرة عامة"),
+    ("Pipeline & ageing", "المراحل والتقادم"),
+    ("Timing & routes", "التوقيت والمسارات"),
+    ("Cost breakdown", "تفصيل التكاليف"),
+    ("Brands & suppliers", "العلامات التجارية والموردون"),
+    ("Equipment & value", "المعدات والقيمة"),
+    ("Exceptions", "الاستثناءات"),
+    ("Open report", "فتح التقرير"),
+    ("open", "مفتوحة"),
+    ("Where open shipments sit right now, and which ones have been in stage the longest.",
+     "أماكن الشحنات المفتوحة حالياً، وأيها الأطول بقاءً في مرحلته."),
+    ("Transit time by mode and lane, and direct versus the fulfilment centre route.",
+     "مدة النقل حسب الوسيلة والمسار، والمقارنة بين المسار المباشر ومسار مركز التنفيذ."),
+    ("Logged cost by category.", "التكاليف المسجلة حسب الفئة."),
+    ("Volume, value and transit performance by brand and by supplier.",
+     "الحجم والقيمة وأداء النقل حسب العلامة التجارية والمورد."),
+    ("Serialised equipment by status, and goods in transit by currency.",
+     "المعدات المرقّمة حسب الحالة، والبضائع في الطريق حسب العملة."),
+    ("Missing documents and rows with contradictory dates.",
+     "المستندات الناقصة والصفوف ذات التواريخ المتناقضة."),
 ]))
 
 # ---- admin & notifications ----
@@ -1454,4 +1474,31 @@ TRANSLATIONS.update(_d([
      "أسعار الصرف المستخدمة لتحويل كل بند تكلفة إلى الجنيه المصري. تبقى قيماً إرشادية "
      "حتى يحددها أحد المسؤولين من الإدارة -> أسعار الصرف؛ وكل حفظ يُسجَّل بتاريخ، "
      "والنظام يستخدم أحدث سعر لكل عملة."),
+]))
+
+# ---- admin: user edit (Admin -> Users) ----
+TRANSLATIONS.update(_d([
+    ("New password", "كلمة مرور جديدة"),
+    ("leave blank to keep the current one", "اتركه فارغاً للإبقاء على كلمة المرور الحالية"),
+]))
+
+# ---- admin: delete a user (Admin -> Users) ----
+TRANSLATIONS.update(_d([
+    ("This is your own account — sign in as someone else to delete it.",
+     "هذا حسابك الخاص — سجّل الدخول بحساب آخر لحذفه."),
+    ("Has activity on record, so it can't be deleted — set Active to No above instead.",
+     "له نشاط مسجَّل، لذا لا يمكن حذفه — عطّل الحساب بدلاً من ذلك عبر تعيين \"نشط\" إلى \"لا\" أعلاه."),
+    ("Delete {name}? This can't be undone.", "هل تريد حذف {name}؟ لا يمكن التراجع عن هذا الإجراء."),
+    ("Delete user", "حذف المستخدم"),
+    ("You can't delete your own account while signed in as it.",
+     "لا يمكنك حذف حسابك الخاص أثناء تسجيل الدخول به."),
+    ("Can't delete the last user with full access — "
+     "create another admin account first, or deactivate this one instead.",
+     "لا يمكن حذف آخر مستخدم يملك صلاحية كاملة — أنشئ حساب إدارة آخر أولاً، أو عطّل هذا الحساب بدلاً من حذفه."),
+    ("This user has activity on record (shipments, comments, notifications or "
+     "similar) — deleting them would break that history. Set them to Inactive "
+     "instead: edit the account and switch Active to No.",
+     "لهذا المستخدم نشاط مسجَّل (شحنات أو تعليقات أو إشعارات أو ما شابه) — حذفه سيؤدي إلى فقدان "
+     "هذا السجل. عطّله بدلاً من ذلك: افتح الحساب للتعديل وغيّر \"نشط\" إلى \"لا\"."),
+    ("User deleted.", "تم حذف المستخدم."),
 ]))

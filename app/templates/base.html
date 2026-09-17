@@ -44,7 +44,7 @@
 
       <div class="group">{{ t("Insight") }}</div>
       {% if current_user.can('view_reports') %}
-      <a href="{{ url_for('reports.index') }}" class="{{ 'active' if (request.endpoint or '') == 'reports.index' }}">{{ t("Reports & KPIs") }}</a>
+      <a href="{{ url_for('reports.index') }}" class="{{ 'active' if 'reports.' in (request.endpoint or '') }}">{{ t("Reports & KPIs") }}</a>
       {% endif %}
       <a href="{{ url_for('admin.notifications') }}" class="{{ 'active' if (request.endpoint or '') == 'admin.notifications' }}">{{ t("Notifications") }}</a>
       <a href="{{ url_for('help.index') }}" class="{{ 'active' if (request.endpoint or '') == 'help.index' }}">{{ t("Help & guide") }}</a>
