@@ -359,7 +359,7 @@ with app.test_client() as c:
               f"({d['landed_total']} vs {d['goods_base']} + {d['cost_total']})")
         apportioned = sum(r["apportioned"] for r in d["item_rows"])
         check("apportioned costs sum to total cost",
-              abs(apportioned - d["cost_total"]) < 0.01 or d["goods_base"] == 0,
+              abs(apportioned - d["cost_total"]) < 0.01,
               f"({apportioned} vs {d['cost_total']})")
 
     # The landed-cost build-up is a separate screen, grouping the same underlying
@@ -377,6 +377,46 @@ with app.test_client() as c:
         check("build-up buckets sum to the same cost total as the statement",
               abs(sum(g["amount"] for g in groups) - d["cost_total"]) < 0.01,
               f"({sum(g['amount'] for g in groups)} vs {d['cost_total']})")
+
+print("\n=== Landed cost build-up: every shipment, not just the sample one ===")
+# A single sample shipment can hide a class of bug that only shows up on certain
+# data shapes — e.g. an item with no invoice value yet (goods_base == 0), which
+# used to silently zero out that item's share of the real, already-booked costs.
+# Walk every seeded shipment and require exact reconciliation, no exceptions.
+with app.app_context():
+    from app.views.shipments import _statement_data, _cost_buildup
+    from app.models import COST_TYPES as _COST_TYPES
+    from app.views.shipments import COST_BUILDUP_GROUPS as _BUILDUP_GROUPS
+    _TOL = 0.01
+
+    _bucket_codes = {}
+    for _key, _label, _codes in _BUILDUP_GROUPS:
+        for _code in _codes:
+            _bucket_codes.setdefault(_code, []).append(_key)
+    check("every cost type maps to exactly one build-up bucket",
+          all(len(ks) == 1 for ks in _bucket_codes.values()) and
+          set(_bucket_codes) == {code for code, _ in _COST_TYPES})
+
+    _all_shipments = Shipment.query.all()
+    _reconciled = 0
+    for _s in _all_shipments:
+        _d = _statement_data(_s)
+        _groups = _cost_buildup(_d)
+        ok = abs(sum(g["amount"] for g in _groups) - _d["cost_total"]) < _TOL
+        ok = ok and abs((_d["goods_base"] + _d["cost_total"]) - _d["landed_total"]) < _TOL
+        if _d["item_rows"]:
+            ok = ok and abs(sum(r["apportioned"] for r in _d["item_rows"]) - _d["cost_total"]) < _TOL
+            ok = ok and abs(sum(r["landed"] for r in _d["item_rows"]) - _d["landed_total"]) < _TOL
+            ok = ok and abs(sum(r["share"] for r in _d["item_rows"]) - 1.0) < _TOL
+            ok = ok and all(
+                abs((r["landed_per_unit"] or 0) * (r["item"].qty or 0) - r["landed"]) < _TOL
+                for r in _d["item_rows"] if r["item"].qty)
+        if ok:
+            _reconciled += 1
+        else:
+            check(f"build-up reconciles for {_s.reference_no}", False)
+    check(f"build-up reconciles exactly for all {len(_all_shipments)} shipments",
+          _reconciled == len(_all_shipments), f"({_reconciled}/{len(_all_shipments)})")
 
 print("\n=== Help ===")
 with app.test_client() as c:

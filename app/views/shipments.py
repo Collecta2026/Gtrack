@@ -737,13 +737,28 @@ def _statement_data(s):
 
     # Landed cost is apportioned across items by their share of goods value —
     # the standard basis, and the only defensible one when a shipment mixes
-    # a CBCT unit with a box of consumables.
+    # a CBCT unit with a box of consumables. But before an invoice is entered,
+    # goods_base is 0 for every item, and dividing by it would silently zero
+    # out real, already-booked costs on every item row — the shipment-level
+    # totals above would still show the true cost_total, while the per-item
+    # table understated it to nothing. Fall back to sharing by quantity, and
+    # if there's no quantity either, split evenly, so booked costs always show
+    # up somewhere per item rather than vanishing for want of an invoice value.
+    total_qty = sum((item.qty or 0) for item in s.items)
+    item_count = len(s.items)
     # NB: the key is 'item_rows', not 'items' — in Jinja, d.items on a dict
     # resolves to the dict's own .items() method, not this key.
     item_rows = []
     for item in s.items:
         line_base = to_base(item.line_value, item.currency)
-        share = (line_base / goods_base) if goods_base else 0
+        if goods_base:
+            share = line_base / goods_base
+        elif total_qty:
+            share = (item.qty or 0) / total_qty
+        elif item_count:
+            share = 1.0 / item_count
+        else:
+            share = 0
         apportioned = cost_total * share
         landed = line_base + apportioned
         qty = item.qty or 0
