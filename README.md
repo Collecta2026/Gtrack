@@ -262,6 +262,44 @@ translation later is a one-line change in `app/i18n.py`.
 
 ## What's new in this build
 
+**Temporary passwords, forced on first sign-in** — a new account (or one an admin resets)
+gets a system-generated temporary password instead of one the admin has to invent. The
+admin sees it once, in a flash message, to hand to the person; the account is locked to the
+**change your password** screen the moment it signs in — nothing else in the app is reachable
+until a password of its own is set. **Admin -> Users** shows a "temporary password — not yet
+set their own" note on any account still in that state, and a one-click **Reset password**
+button lets the admin issue a fresh temporary one whenever someone asks, without needing to
+know or choose what they end up with.
+
+**A dedicated entry screen for received freight quotes** — **Finance -> Quotations -> Log a
+received quote** (also reachable from a shipment's Quotations panel) records what a forwarder
+actually quoted broken down to its cost elements — air/sea freight, export customs clearance,
+X-ray/scanning, origin handling, documentation, and other — rather than one lump sum. The
+total is computed from the elements when they're filled in (a plain total is still accepted
+for a quote that didn't come itemised), and the breakdown shows on the quote wherever it's
+listed, so comparing forwarders means comparing like-for-like cost elements, not just a
+bottom line.
+
+**Landed cost build-up, from goods value to total machine cost** — a shipment's new
+**Landed cost build-up** screen (button on the shipment page, next to Cost statement) walks
+from the goods value (from the supplier invoice) through the actual cost groups booked
+against the shipment — shipping/freight, customs & clearance, bank charges, last-mile
+delivery, and other costs — to a total landed cost, then apportions that total across the
+shipment's items to give a landed cost per unit. Where the earlier leg of a two-step
+shipment carried its own costs, those are added in too, with the quote-vs-actual variance
+noted alongside.
+
+**Step-by-step "how to use it" guidance throughout Help** — every section of **Help** now
+pairs its existing description of what a screen does with a walk-through of how to actually
+use it (what to fill in, what order, what happens next), including two new workflow guides —
+comparing forwarder quotes and picking one, and setting someone up with a login — and
+coverage of the new Landed cost build-up screen.
+
+**The sidebar keeps your place** — clicking a menu item used to leave the sidebar showing
+its default highlight instead of where you actually navigated to; it now stays on the section
+you're viewing (including a shipment's Overview/Quotations/Costs tabs, tracked as you scroll)
+rather than resetting.
+
 **Reports now open as a submenu, not one long page** — **Admin -> Reports & KPIs** is a
 hub of the headline KPI tiles plus a menu of the individual reports, each its own page:
 Pipeline & ageing, Timing & routes, Cost breakdown, Brands & suppliers, Equipment & value,

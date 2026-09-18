@@ -1,4 +1,5 @@
 """Authentication, roles and permission decorators."""
+import secrets
 from functools import wraps
 from datetime import datetime
 
@@ -9,6 +10,16 @@ from .models import db, User
 from .i18n import t
 
 bp = Blueprint("auth", __name__)
+
+# Unambiguous characters only (no 0/O, 1/l/I) — this gets read off a screen by an
+# admin and retyped by whoever it's handed to, so it should never be misread.
+_TEMP_PW_ALPHABET = "ABCDEFGHJKMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789"
+
+
+def generate_temp_password(length=10):
+    """A random temporary password for a new account, or an admin-issued reset —
+    the account must set its own the moment it first signs in with this one."""
+    return "".join(secrets.choice(_TEMP_PW_ALPHABET) for _ in range(length))
 
 
 # --------------------------------------------------------------------------
@@ -159,3 +170,42 @@ def login():
 def logout():
     logout_user()
     return redirect(url_for("auth.login"))
+
+
+@bp.route("/change-password", methods=["GET", "POST"])
+@login_required
+def change_password():
+    if request.method == "POST":
+        current_pw = request.form.get("current_password") or ""
+        new_pw = request.form.get("new_password") or ""
+        confirm_pw = request.form.get("confirm_password") or ""
+        if not current_user.check_password(current_pw):
+            flash(t("That current password is incorrect."), "error")
+        elif len(new_pw) < 6:
+            flash(t("The new password must be at least 6 characters."), "error")
+        elif new_pw != confirm_pw:
+            flash(t("The new password and its confirmation don't match."), "error")
+        else:
+            current_user.set_password(new_pw)
+            current_user.must_change_password = False
+            db.session.commit()
+            flash(t("Password set — you're all set."), "success")
+            return redirect(url_for("dashboard.index"))
+
+    return render_template("change_password.html")
+
+
+# Endpoints reachable even while a password change is outstanding — signing out
+# and the language toggle must always work, and the change-password screen must
+# not redirect to itself.
+_PASSWORD_CHANGE_ALLOWED_ENDPOINTS = {"auth.change_password", "auth.logout", "set_language"}
+
+
+@bp.before_app_request
+def _enforce_password_change():
+    if not current_user.is_authenticated or not current_user.must_change_password:
+        return
+    endpoint = request.endpoint or ""
+    if endpoint in _PASSWORD_CHANGE_ALLOWED_ENDPOINTS or endpoint.startswith("static"):
+        return
+    return redirect(url_for("auth.change_password"))

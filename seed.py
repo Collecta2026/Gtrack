@@ -826,11 +826,24 @@ def seed_demo_layer(shipments, customers, users):
         chosen = random.sample(forwarders, k=min(3, len(forwarders)))
         base = random.randint(900, 6500)
         for i, fwd in enumerate(chosen):
+            total = round(base * random.uniform(0.85, 1.3))
+            # Broken down to what a forwarder's quote is actually made of, roughly
+            # in the proportions a real one arrives in, summing exactly to the total.
+            freight_cost = round(total * 0.65)
+            export_clearance_cost = round(total * 0.10)
+            xray_cost = round(total * 0.03)
+            origin_handling_cost = round(total * 0.12)
+            documentation_cost = round(total * 0.04)
+            other_cost = total - (freight_cost + export_clearance_cost + xray_cost
+                                  + origin_handling_cost + documentation_cost)
             quote = FreightQuotation(
                 shipment_id=s.id, forwarder_id=fwd.id,
                 quote_ref=f"Q-{s.reference_no.split('-')[1]}-{i+1}",
                 quote_date=(s.etd or date.today()) - timedelta(days=random.randint(5, 20)),
-                quoted_amount=round(base * random.uniform(0.85, 1.3)),
+                quoted_amount=total,
+                freight_cost=freight_cost, export_clearance_cost=export_clearance_cost,
+                xray_cost=xray_cost, origin_handling_cost=origin_handling_cost,
+                documentation_cost=documentation_cost, other_cost=other_cost,
                 currency="USD", mode=s.mode,
                 transit_days=random.randint(3, 40),
                 valid_until=(s.etd or date.today()) + timedelta(days=20),

@@ -24,6 +24,11 @@ def create_app(config_class=Config):
     db.init_app(app)
     login_manager.init_app(app)
 
+    # Patch any column a model has picked up since the database was last built —
+    # see schema_sync.py for why this exists instead of a migration framework.
+    from .schema_sync import sync_schema
+    sync_schema(app, db)
+
     from .audit import register_audit_listeners
     register_audit_listeners()
 

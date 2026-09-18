@@ -7,7 +7,7 @@ from flask_login import login_required, current_user
 from ..models import (db, User, Role, Customer, PurchaseOrder, Shipment, AssetMovement,
                       Allocation, StatusHistory, Document, Comment, NotificationRule,
                       NotificationLog, AuditLog, Stage, ExchangeRate, FX_RATES)
-from ..auth import permission_required, PERMISSIONS, SYSTEM_ROLE_CODE
+from ..auth import permission_required, PERMISSIONS, SYSTEM_ROLE_CODE, generate_temp_password
 from ..exports import export_response
 from ..i18n import t
 
@@ -30,27 +30,63 @@ def index():
 def users():
     if request.method == "POST":
         user_id = request.form.get("id", type=int)
+        is_new = not user_id
         user = db.session.get(User, user_id) if user_id else User()
         user.name = request.form.get("name")
         user.email = (request.form.get("email") or "").strip().lower()
         user.role_id = request.form.get("role_id", type=int)
         user.phone = request.form.get("phone")
         user.is_active_flag = bool(request.form.get("is_active"))
+
+        # A password only ever comes from Admin — a brand-new account, or an
+        # explicit reset — never something the user picked, so either way it is
+        # temporary: must_change_password forces them onto their own at next sign-in.
         password = request.form.get("password")
-        if password:
+        temp_password = None
+        if is_new:
+            temp_password = password or generate_temp_password()
+            user.set_password(temp_password)
+            user.must_change_password = True
+        elif password:
             user.set_password(password)
-        elif not user_id:
-            user.set_password("demo1234")
-        if not user_id:
+            user.must_change_password = True
+            temp_password = password
+
+        if is_new:
             db.session.add(user)
         db.session.commit()
-        flash(t("User saved."), "success")
+
+        if temp_password:
+            flash(t("User saved. Temporary password: {password} — share it with them; "
+                    "they'll be asked to set their own the moment they sign in.",
+                    password=temp_password), "success")
+        else:
+            flash(t("User saved."), "success")
         return redirect(url_for("admin.users"))
 
     all_users = User.query.order_by(User.id).all()
     return render_template("admin/users.html", users=all_users,
                            roles=Role.query.order_by(Role.id).all(),
                            has_history={u.id: _user_has_history(u.id) for u in all_users})
+
+
+@bp.route("/users/<int:user_id>/reset-password", methods=["POST"])
+@permission_required("*")
+def reset_password(user_id):
+    """A one-click reset for when a user asks for a new password — no need to
+    open the edit form and type one in. Generates a fresh temporary password
+    and forces the account to set its own again at next sign-in."""
+    user = db.session.get(User, user_id)
+    if user is None:
+        abort(404)
+    temp_password = generate_temp_password()
+    user.set_password(temp_password)
+    user.must_change_password = True
+    db.session.commit()
+    flash(t("Temporary password for {name}: {password} — share it with them; "
+            "they'll be asked to set their own the moment they sign in.",
+            name=user.name, password=temp_password), "success")
+    return redirect(url_for("admin.users"))
 
 
 # Every table that records who did something, keyed by (model, column name) — this is

@@ -1,0 +1,100 @@
+{% extends "base.html" %}
+{% block heading %}{{ t("Landed cost build-up") }}{% endblock %}
+{% block crumb %}{{ s.reference_no }} · {{ s.origin or '—' }} → {{ s.destination or '—' }}{% endblock %}
+
+{% block actions %}
+  <a class="btn ghost sm" href="{{ url_for('shipments.statement', shipment_id=s.id) }}">{{ t("Full statement (per item)") }}</a>
+  <a class="btn ghost sm" href="{{ url_for('shipments.detail', shipment_id=s.id) }}">{{ t("Back to shipment") }}</a>
+{% endblock %}
+
+{% block content %}
+
+<div class="card">
+  <div class="card-head">
+    <h2>{{ t("From goods value to total cost of the machine") }}</h2>
+    <span class="tiny muted">{{ t("Every figure here is in") }} {{ base_currency }}</span>
+  </div>
+  <div class="table-wrap">
+    <table>
+      <tbody>
+        <tr>
+          <td>{{ t("Goods value (from invoice)") }}</td>
+          <td class="num">{{ d.goods_base | money }}</td>
+        </tr>
+        {% for g in groups %}
+        <tr>
+          <td>+ {{ g.label }}</td>
+          <td class="num">{{ g.amount | money }}</td>
+        </tr>
+        {% endfor %}
+        <tr class="buildup-total">
+          <td>{{ t("Total landed cost") }}</td>
+          <td class="num">{{ d.landed_total | money }}</td>
+        </tr>
+        {% if d.upstream_total %}
+        <tr>
+          <td>+ {{ t("Earlier leg costs carried forward") }}
+            <span class="tiny muted">({{ d.upstream_legs | map(attribute='reference_no') | join(', ') }})</span>
+          </td>
+          <td class="num">{{ d.upstream_total | money }}</td>
+        </tr>
+        <tr class="buildup-total">
+          <td>{{ t("True landed total (including earlier legs)") }}</td>
+          <td class="num">{{ d.true_landed_total | money }}</td>
+        </tr>
+        {% endif %}
+      </tbody>
+    </table>
+  </div>
+
+  {% if d.quote %}
+  <div class="card-body tight">
+    <div class="tiny muted">
+      {{ t("Shipping is priced from the winning quote") }} —
+      {{ d.quote.forwarder.name if d.quote.forwarder else t("selected forwarder") }},
+      {{ t("quote ref") }} {{ d.quote.quote_ref or '—' }}: {{ d.quoted_base | money }} {{ base_currency }}.
+      {% if d.freight_actual_base %}
+        {{ t("Freight actually booked so far") }}: {{ d.freight_actual_base | money }} {{ base_currency }}
+        {% if d.variance is not none %}
+          (<span class="{{ 'red' if d.variance > 0 else 'green' }}">{{ '+' if d.variance > 0 }}{{ d.variance | money }}</span> {{ t("vs quote") }})
+        {% endif %}
+      {% else %}
+        {{ t("No freight cost booked against this shipment yet — the build-up above uses actual booked costs, so shipping shows as zero until one is.") }}
+      {% endif %}
+    </div>
+  </div>
+  {% else %}
+  <div class="card-body tight">
+    <div class="tiny muted">{{ t("No quotation has been selected for this shipment yet — log one from the Quotations tab, or the full quotation entry screen, so shipping cost can be tracked against what was actually quoted.") }}</div>
+  </div>
+  {% endif %}
+</div>
+
+<div class="card">
+  <div class="card-head"><h2>{{ t("Per machine / item") }}</h2></div>
+  {% if d.item_rows %}
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>{{ t("Item") }}</th><th class="num">{{ t("Qty") }}</th>
+        <th class="num">{{ t("Goods value") }}</th><th class="num">{{ t("Apportioned costs") }}</th>
+        <th class="num">{{ t("Landed cost per unit") }}</th></tr></thead>
+      <tbody>
+      {% for row in d.item_rows %}
+        <tr>
+          <td class="small">{{ row.item.description or '—' }}</td>
+          <td class="num small">{{ row.item.qty | money }} {{ row.item.unit }}</td>
+          <td class="num small">{{ row.line_base | money }}</td>
+          <td class="num small">{{ row.apportioned | money }}</td>
+          <td class="num small"><strong>{{ row.true_landed_per_unit | money2 if row.true_landed_per_unit is not none else '—' }}</strong></td>
+        </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  <div class="card-body tight">
+    <div class="tiny muted">{{ t("Costs are apportioned across items by each item's share of total goods value. For serial numbers and allocations per item, use the full statement.") }}</div>
+  </div>
+  {% else %}<div class="empty">{{ t("No item lines recorded yet.") }}</div>{% endif %}
+</div>
+
+{% endblock %}

@@ -65,6 +65,9 @@ tbody tr:hover{background:#f8fafc}
 .tile.good .val{color:var(--green)}
 .tile.amber .val{color:var(--amber)}
 
+/* ---------- landed cost build-up ---------- */
+.buildup-total td{border-top:2px solid var(--line);font-weight:700;padding-top:.6rem}
+
 /* ---------- report submenu ---------- */
 .subnav{display:flex;flex-wrap:wrap;gap:.3rem;margin-bottom:1.1rem;border-bottom:1px solid var(--line);padding-bottom:.1rem}
 .subnav a{display:inline-block;padding:.4rem .75rem;font-size:.8rem;font-weight:600;color:var(--muted);
@@ -172,6 +175,7 @@ textarea{min-height:70px;resize:vertical}
 .tiny{font-size:.72rem}
 .mb0{margin-bottom:0}
 .mt1{margin-top:1rem}
+.mb1{margin-bottom:1rem}
 .right{text-align:right}
 .empty{padding:1.6rem;text-align:center;color:var(--muted);font-size:.85rem}
 .kv{display:grid;grid-template-columns:auto 1fr;gap:.35rem 1rem;font-size:.83rem}

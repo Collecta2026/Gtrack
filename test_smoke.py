@@ -2,6 +2,7 @@
 
 Safe to run repeatedly: each run tags the records it creates with a unique prefix.
 """
+import re
 import sys
 import uuid
 
@@ -13,7 +14,7 @@ from app.auth import PERMISSIONS
 from app.models import (db, Shipment, ShipmentItem, Asset, Allocation, PurchaseOrder,
                         CostLine, Customer, Carrier, Supplier, User, NotificationLog,
                         AuditLog, Stage, Location, CustomsBroker, AssetMovement,
-                        BankRegistration, Role, to_base, Comment)
+                        BankRegistration, Role, to_base, Comment, FreightQuotation)
 
 app = create_app()
 app.config["WTF_CSRF_ENABLED"] = False
@@ -97,7 +98,8 @@ with app.test_client() as c:
         "/shipments/new", f"/shipments/{shipment_id}/edit",
         "/purchase-orders/", f"/purchase-orders/{po_id}", "/purchase-orders/new",
         f"/purchase-orders/{po_id}/edit",
-        "/finance/costs", "/finance/invoices", "/finance/quotations", "/finance/bank-registrations",
+        "/finance/costs", "/finance/invoices", "/finance/quotations", "/finance/quotations/new",
+        "/finance/bank-registrations",
         "/equipment/", f"/equipment/{asset_id}", "/equipment/allocations", "/equipment/customers",
         "/master-data/", "/master-data/suppliers", "/master-data/brands", "/master-data/carriers",
         "/master-data/consignees", "/master-data/customers", "/master-data/banks",
@@ -106,6 +108,7 @@ with app.test_client() as c:
         "/admin/users", "/admin/roles", "/admin/notification-rules",
         "/admin/notifications", "/admin/audit",
         "/help/", "/search/", f"/shipments/{shipment_id}/statement",
+        f"/shipments/{shipment_id}/cost-buildup",
     ]:
         get(c, url)
 
@@ -252,6 +255,30 @@ with app.test_client() as c:
         check("selected quote reflected on shipment", s.selected_quote is not None)
         check("quote variance computed", s.quote_variance is not None or s.freight_actual == 0)
 
+    # A quote broken down to its cost elements totals itself automatically, rather
+    # than needing the total typed in separately.
+    resp = c.post(f"/shipments/{shipment_id}/quotations/add",
+                  data={"forwarder_id": str(carrier_id), "quote_ref": f"SMOKE-Q-ELEMENTS-{RUN}",
+                        "currency": "USD", "quote_date": "2026-09-01",
+                        "freight_cost": "1000", "export_clearance_cost": "150",
+                        "xray_cost": "40", "origin_handling_cost": "60",
+                        "documentation_cost": "25", "other_cost": "10"},
+                  follow_redirects=True)
+    check("POST add quotation with a cost-element breakdown", resp.status_code == 200)
+    with app.app_context():
+        s = db.session.get(Shipment, shipment_id)
+        eq = [x for x in s.quotations if x.quote_ref == f"SMOKE-Q-ELEMENTS-{RUN}"][0]
+        check("quoted_amount auto-totals the itemised elements", eq.quoted_amount == 1285)
+        check("cost_breakdown lists every non-zero element", len(eq.cost_breakdown) == 6)
+
+    # The standalone quotation entry screen under Finance
+    resp = get(c, "/finance/quotations/new", label="standalone quotation entry screen renders")
+    with app.app_context():
+        an_open_shipment = next((sh for sh in Shipment.query.all() if sh.is_open), None)
+    check("standalone screen lists an open shipment to pick from",
+          an_open_shipment is not None
+          and an_open_shipment.reference_no.encode() in resp.data)
+
     resp = c.post(f"/shipments/{shipment_id}/bank-registration",
                   data={"registration_no": f"F4-{RUN}", "registration_date": "2026-09-01"},
                   follow_redirects=True)
@@ -334,6 +361,22 @@ with app.test_client() as c:
         check("apportioned costs sum to total cost",
               abs(apportioned - d["cost_total"]) < 0.01 or d["goods_base"] == 0,
               f"({apportioned} vs {d['cost_total']})")
+
+    # The landed-cost build-up is a separate screen, grouping the same underlying
+    # costs into plain top-down buckets — it must always reconcile with the Statement.
+    r = c.get(f"/shipments/{shipment_id}/cost-buildup")
+    check("landed cost build-up renders", r.status_code == 200)
+    body = r.data.decode()
+    for needle in ["Goods value (from invoice)", "Total landed cost", "Per machine / item"]:
+        check(f"build-up shows '{needle}'", needle in body)
+    with app.app_context():
+        from app.views.shipments import _statement_data, _cost_buildup
+        s_obj = db.session.get(Shipment, shipment_id)
+        d = _statement_data(s_obj)
+        groups = _cost_buildup(d)
+        check("build-up buckets sum to the same cost total as the statement",
+              abs(sum(g["amount"] for g in groups) - d["cost_total"]) < 0.01,
+              f"({sum(g['amount'] for g in groups)} vs {d['cost_total']})")
 
 print("\n=== Help ===")
 with app.test_client() as c:
@@ -486,10 +529,19 @@ with app.test_client() as c:
         u = db.session.get(User, edit_user_id)
         check("new password takes effect", u.check_password(f"smoke{RUN}"))
         check("old password no longer works", not u.check_password("demo1234"))
-    with app.test_client() as c2:
-        r = c2.post("/login", data={"email": "sales1@scientificgate.test", "password": f"smoke{RUN}"},
-                    follow_redirects=True)
-        check("can sign in with the newly-set password", b"Incorrect email or password" not in r.data)
+
+# A fresh client, kept OUTSIDE the admin client's still-open `with` block above: Flask's
+# test client preserves its request context across a `with` block, and a client opened
+# *inside* another still-open one inherits that preserved context's logged-in user
+# instead of starting out anonymous — which would make this check pass even if the
+# new password never actually worked.
+with app.test_client() as c2:
+    r = c2.post("/login", data={"email": "sales1@scientificgate.test", "password": f"smoke{RUN}"},
+                follow_redirects=True)
+    check("can sign in with the newly-set password", b"Incorrect email or password" not in r.data)
+
+with app.test_client() as c:
+    login(c, "zak@scientificgate.test")
 
     # Put this demo account back the way the rest of the suite (and a re-run) expects
     # it — name, phone and password all restored to their seeded values.
@@ -501,8 +553,89 @@ with app.test_client() as c:
     check("POST restore user to seeded state", resp.status_code == 200)
     with app.app_context():
         u = db.session.get(User, edit_user_id)
+        # Restoring to the seeded state means no password reset is left pending either —
+        # an admin-typed password here still marks must_change_password, but "seeded"
+        # sales1 is a working demo account, not a fresh reset (the suite reruns as this
+        # account without changing its password again, e.g. Role scoping below).
+        u.must_change_password = False
+        db.session.commit()
         check("user restored to seeded name and password",
               u.name == "Sara Mahmoud" and u.check_password("demo1234"))
+        check("no password change left pending after restore", not u.must_change_password)
+
+    # --- A brand-new account gets a system-generated temporary password and must set
+    # its own before it can do anything else ---
+    with app.app_context():
+        sales_role_id_early = Role.query.filter_by(code="sales").first().id
+    newpw_email = f"smokenewpw{RUN.lower()}@scientificgate.test"
+    resp = c.post("/admin/users",
+                  data={"name": f"Smoke NewPW User {RUN}", "email": newpw_email,
+                        "role_id": sales_role_id_early, "is_active": "1"},
+                  follow_redirects=True)
+    check("POST add user with no password given", resp.status_code == 200)
+    m = re.search(r"Temporary password: (\S+)", resp.data.decode())
+    check("temporary password shown to the admin", m is not None)
+    temp_pw = m.group(1) if m else None
+    with app.app_context():
+        newpw_user = User.query.filter_by(email=newpw_email).first()
+        check("new user actually created", newpw_user is not None)
+        check("new user must change password", bool(newpw_user and newpw_user.must_change_password))
+        newpw_user_id = newpw_user.id
+
+if temp_pw:
+    # Again a top-level client, sibling to (not nested inside) the admin client's `with`
+    # block — see the note above about a test client's preserved request context leaking
+    # its logged-in user into any client opened while that block is still open.
+    with app.test_client() as c3:
+        r = c3.post("/login", data={"email": newpw_email, "password": temp_pw},
+                    follow_redirects=True)
+        check("can sign in with the generated temporary password",
+              b"Incorrect email or password" not in r.data)
+        r2 = c3.get("/shipments/", follow_redirects=False)
+        check("forced to the change-password screen before anything else",
+              r2.status_code == 302 and "/change-password" in r2.location)
+        r3 = c3.post("/change-password",
+                    data={"current_password": "wrong-password", "new_password": "newpassword1",
+                          "confirm_password": "newpassword1"}, follow_redirects=True)
+        check("wrong current password rejected on the change screen",
+              b"incorrect" in r3.data.lower())
+        r4 = c3.post("/change-password",
+                    data={"current_password": temp_pw, "new_password": "newpassword1",
+                          "confirm_password": "newpassword1"}, follow_redirects=True)
+        check("password change accepted", r4.status_code == 200)
+        r5 = c3.get("/shipments/", follow_redirects=False)
+        check("no longer forced to change-password once a password is set",
+              r5.status_code == 200)
+    with app.app_context():
+        u = db.session.get(User, newpw_user_id)
+        check("must_change_password cleared after setting a new password",
+              not u.must_change_password)
+        check("the newly-chosen password actually took effect", u.check_password("newpassword1"))
+
+with app.test_client() as c:
+    login(c, "zak@scientificgate.test")
+
+    # --- Admin can reset a user's password on request, without knowing or choosing
+    # what they end up with ---
+    resp = c.post(f"/admin/users/{newpw_user_id}/reset-password", follow_redirects=True)
+    check("POST reset password", resp.status_code == 200)
+    m2 = re.search(r"Temporary password for [^:]+: (\S+)", resp.data.decode())
+    check("reset flashes a new temporary password to the admin", m2 is not None)
+    reset_pw = m2.group(1) if m2 else None
+    with app.app_context():
+        u = db.session.get(User, newpw_user_id)
+        check("reset sets must_change_password again", u.must_change_password)
+        check("the previous password no longer works after a reset",
+              not u.check_password("newpassword1"))
+        if reset_pw:
+            check("the new temporary password from the reset works", u.check_password(reset_pw))
+        # cleanup — logging in and changing its own password gave this account its own
+        # audit-trail entries (it's the changed_by on its own User row), so purge those
+        # too before the hard delete; otherwise Postgres's real foreign key rejects the
+        # delete outright (SQLite just lets it through and leaves a dangling reference).
+        AuditLog.query.filter_by(changed_by_id=newpw_user_id).delete()
+        db.session.delete(u)
+        db.session.commit()
 
     # --- Delete user: a fresh account with no history can actually be deleted ---
     with app.app_context():
@@ -934,7 +1067,8 @@ with app.test_client() as c:
     check("symbolic translation keys exist", len(symbolic) > 0)
     for lang in ("en", "ar"):
         c.get(f"/lang/{lang}", follow_redirects=True)
-        for url in ("/help/", f"/shipments/{shipment_id}/statement", "/", "/reports/"):
+        for url in ("/help/", f"/shipments/{shipment_id}/statement", "/", "/reports/",
+                   f"/shipments/{shipment_id}/cost-buildup", "/finance/quotations/new"):
             body = c.get(url).data.decode()
             leaked = [k for k in symbolic if k in body]
             check(f"no raw keys on {url} ({lang})", not leaked, f"(leaked {leaked})")
