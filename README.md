@@ -24,8 +24,10 @@ during setup.
 3. Double-click **`start_windows.bat`**.
 4. Wait for it to finish installing and seeding — a minute or two the first time.
 5. Open **http://127.0.0.1:5000** in your browser.
-6. Sign in as `zak@scientificgate.test` with the password `demo1234`, or click "Use"
-   beside any other account to see that role's view.
+6. There are no accounts yet, so Gtrack walks you straight to a one-time setup screen —
+   enter your name, email and a password of your own choosing to create the admin
+   account. You're signed in immediately; add everyone else afterwards from
+   **Admin -> Users**.
 
 Leave the black window open while you use it — that is the server. Close it or press
 `Ctrl+C` to stop. To start it again later, double-click the same file; it keeps the
@@ -81,27 +83,28 @@ requirements. Gtrack itself needs no compiler: install `requirements.txt`, not
 **Windows Firewall prompt** — you can decline it. `127.0.0.1` works either way; allowing
 it only matters if you want to reach Gtrack from another device on your network.
 
-### Test accounts
+### Accounts
 
-The sign-in screen is a plain email/password form — no directory of accounts on it, since
-in real use every account is created by the CFO from **Admin -> Users** with a password
-they set. The seed data below is only for trying the system out locally; every seeded
-account uses the password **demo1234**.
+There is no seeded login, and no directory of demo accounts on the sign-in screen — a
+fresh database has zero accounts on purpose. The **first time** anyone opens Gtrack, it
+shows a one-time setup screen instead of a login form: whoever gets there first creates
+the admin account, choosing their own email and password (nobody else, including us, ever
+knows it). That account has full access — Admin -> Users, Roles, Authorisation matrix, FX
+rates — and from there you create everyone else's login, assign each one a role from the
+matrix below, and hand out its one-time temporary password (**Admin -> Users** covers this
+in full, including how to reset a forgotten password).
 
-| Email | Role | What they see |
-|---|---|---|
-| `zak@scientificgate.test` | CFO | Everything, plus Admin -> Users, Roles, Authorisation matrix, FX rates |
-| `amr@scientificgate.test` | MD | Full read + dashboards, no admin |
-| `finance@scientificgate.test` | Finance | Costs, payments, bank registration |
-| `sales1@scientificgate.test` | Sales | **Only their own customers' shipments** |
-| `sales2@scientificgate.test` | Sales | A different customer portfolio |
-| `salesadmin@scientificgate.test` | Sales Admin | All customers' allocations, not just their own |
-| `procurement@scientificgate.test` | Logistics Admin | POs, supplier invoices, suppliers, shipments, stages, Form 4, warehouse receipt |
-| `logistics@scientificgate.test` | Logistics Admin | Same as above |
-| `warehouse@scientificgate.test` | Logistics Admin | Receipt, condition, serials — folded into Logistics Admin |
+| Role | What they see |
+|---|---|
+| CFO | Everything, plus Admin -> Users, Roles, Authorisation matrix, FX rates |
+| MD | Full read + dashboards, no admin |
+| Finance | Costs, payments, bank registration, the Financial analysis report |
+| Sales | **Only their own customers' shipments** |
+| Sales Admin | All customers' allocations, not just their own |
+| Logistics Admin | POs, supplier invoices, suppliers, shipments, stages, Form 4, warehouse receipt |
 
-Sign in as `sales1` to see the point of the whole system: the account manager sees where
-each of their customers' machines is, and nothing else.
+The demo shipment history (below) still seeds in, so there's real data to look at as soon
+as you sign in — just no people attached to it until you add your own.
 
 ---
 
@@ -262,6 +265,25 @@ translation later is a one-line change in `app/i18n.py`.
 
 ## What's new in this build
 
+**No pre-loaded accounts — you create the admin yourself, on first run** — a fresh
+database has zero accounts. The first person to open Gtrack is walked through a one-time
+setup screen instead of a login form: name, email, and a password of your own choosing —
+nobody else, including us, ever sees it. You're signed in immediately with full access,
+and from **Admin -> Users** you create everyone else's login, one per person, matching
+their actual position, the same way the temporary-password flow already worked. The
+seeded demo shipment history still comes with the download so there's real data to look
+at right away — it just has nobody attached to it until you add your own team.
+
+**Financial analysis report** — **Reports -> Financial analysis** lists every shipment in
+one table, goods value through every cost element (shipping, customs & clearance, bank
+charges, last-mile delivery, other) to the total landed cost, with paid/unpaid alongside —
+pulled live from the cost lines, invoices and quotations already logged, nothing entered
+separately. Exports to Excel, CSV and PDF, built for a finance manager reviewing the whole
+portfolio at once rather than one shipment's build-up at a time. Fixed alongside it: the
+per-shipment Landed cost build-up screen used to zero out a machine's share of already-
+booked costs whenever its invoice value hadn't been entered yet — apportionment now falls
+back to quantity, so real costs never silently disappear from the per-item table.
+
 **Temporary passwords, forced on first sign-in** — a new account (or one an admin resets)
 gets a system-generated temporary password instead of one the admin has to invent. The
 admin sees it once, in a flash message, to hand to the person; the account is locked to the
@@ -302,8 +324,8 @@ rather than resetting.
 
 **Reports now open as a submenu, not one long page** — **Admin -> Reports & KPIs** is a
 hub of the headline KPI tiles plus a menu of the individual reports, each its own page:
-Pipeline & ageing, Timing & routes, Cost breakdown, Brands & suppliers, Equipment & value,
-and Exceptions (document gaps and date anomalies). A submenu strip on every report page
+Pipeline & ageing, Timing & routes, Cost breakdown, Financial analysis, Brands & suppliers,
+Equipment & value, and Exceptions (document gaps and date anomalies). A submenu strip on every report page
 switches between them without going back to the hub. The full register export (Excel/CSV/PDF)
 stays a click away from the hub.
 

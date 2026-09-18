@@ -1502,3 +1502,120 @@ TRANSLATIONS.update(_d([
      "هذا السجل. عطّله بدلاً من ذلك: افتح الحساب للتعديل وغيّر \"نشط\" إلى \"لا\"."),
     ("User deleted.", "تم حذف المستخدم."),
 ]))
+
+# ---- admin: temporary password / reset password (Admin -> Users) ----
+TRANSLATIONS.update(_d([
+    ("Reset password", "إعادة تعيين كلمة المرور"),
+    ("Reset {name}'s password? A new temporary one will be generated for you to share with them.",
+     "هل تريد إعادة تعيين كلمة مرور {name}؟ سيتم توليد كلمة مرور مؤقتة جديدة لتسليمها له."),
+    ("Temporary password — not yet set their own",
+     "كلمة مرور مؤقتة — لم يحدد بعد كلمة مرور خاصة به"),
+    ("Password (optional)", "كلمة المرور (اختياري)"),
+    ("leave blank to auto-generate a temporary one", "اتركه فارغاً لتوليد كلمة مرور مؤقتة تلقائياً"),
+    ("Whatever password is set here is temporary — the new account will be asked to choose its "
+     "own the moment it first signs in.",
+     "أي كلمة مرور تُحدَّد هنا مؤقتة — سيُطلب من الحساب الجديد اختيار كلمة مرور خاصة به فور أول "
+     "تسجيل دخول."),
+    ("User saved. Temporary password: {password} — share it with them; they'll be asked to set "
+     "their own the moment they sign in.",
+     "تم حفظ المستخدم. كلمة المرور المؤقتة: {password} — سلّمها له؛ سيُطلب منه تحديد كلمة مرور "
+     "خاصة به فور تسجيل الدخول."),
+    ("Temporary password for {name}: {password} — share it with them; they'll be asked to set "
+     "their own the moment they sign in.",
+     "كلمة المرور المؤقتة لـ {name}: {password} — سلّمها له؛ سيُطلب منه تحديد كلمة مرور خاصة به "
+     "فور تسجيل الدخول."),
+    ("That current password is incorrect.", "كلمة المرور الحالية غير صحيحة."),
+    ("The new password must be at least 6 characters.",
+     "يجب أن تتكون كلمة المرور الجديدة من 6 أحرف على الأقل."),
+    ("The new password and its confirmation don't match.",
+     "كلمة المرور الجديدة وتأكيدها غير متطابقين."),
+    ("Password set — you're all set.", "تم تعيين كلمة المرور — كل شيء جاهز الآن."),
+    ("Set your password", "تعيين كلمة المرور"),
+    ("You're signed in with a temporary password — choose your own to continue.",
+     "أنت مسجَّل الدخول بكلمة مرور مؤقتة — اختر كلمة مرور خاصة بك للمتابعة."),
+    ("Current (temporary) password", "كلمة المرور الحالية (المؤقتة)"),
+    ("Confirm new password", "تأكيد كلمة المرور الجديدة"),
+    ("Set password", "تعيين كلمة المرور"),
+]))
+
+# ---- freight quotations: cost-element breakdown ----
+TRANSLATIONS.update(_d([
+    ("Air / sea freight", "الشحن الجوي / البحري"),
+    ("Export customs clearance", "التخليص الجمركي للتصدير"),
+    ("X-ray / scanning", "الفحص بالأشعة السينية"),
+    ("Origin handling", "مناولة في بلد المنشأ"),
+    ("Documentation fee", "رسوم المستندات"),
+    ("Log a received quote", "تسجيل عرض سعر مستلم"),
+    ("Back to quotations", "العودة إلى عروض الأسعار"),
+    ("Received quote", "عرض السعر المستلم"),
+    ("Shipment", "الشحنة"),
+    ("Cost elements", "عناصر التكلفة"),
+    ("Cost elements — fill in whichever the forwarder itemised; they add up to the quoted "
+     "total automatically.",
+     "عناصر التكلفة — أدخل ما حدده الوكيل الملاحي منها؛ ستُجمع تلقائياً لتكوين إجمالي العرض."),
+    ("Break the forwarder's price down to what it's actually made of — fill in whichever "
+     "elements they itemised. They add up to the quoted total automatically.",
+     "قسّم سعر الوكيل الملاحي إلى العناصر التي يتكون منها فعلياً — أدخل ما حدده منها. ستُجمع "
+     "تلقائياً لتكوين إجمالي العرض."),
+    ("Total (only if not itemised above)", "الإجمالي (فقط إن لم تُحدَّد العناصر أعلاه)"),
+    ("Open the full quotation entry screen", "فتح شاشة إدخال عروض الأسعار الكاملة"),
+]))
+
+# ---- landed cost build-up (per shipment) ----
+TRANSLATIONS.update(_d([
+    ("Landed cost build-up", "تفصيل تكلفة الوصول"),
+    ("Full statement (per item)", "الكشف الكامل (لكل صنف)"),
+    ("Back to shipment", "العودة إلى الشحنة"),
+    ("From goods value to total cost of the machine", "من قيمة البضاعة إلى إجمالي تكلفة الجهاز"),
+    ("Every figure here is in", "كل الأرقام هنا بعملة"),
+    ("Goods value (from invoice)", "قيمة البضاعة (من الفاتورة)"),
+    ("Total landed cost", "إجمالي تكلفة الوصول"),
+    ("Earlier leg costs carried forward", "تكاليف مرحلة سابقة مرحّلة"),
+    ("True landed total (including earlier legs)",
+     "إجمالي التكلفة الفعلي (شاملاً المراحل السابقة)"),
+    ("Shipping is priced from the winning quote", "تكلفة الشحن مأخوذة من عرض السعر الفائز"),
+    ("selected forwarder", "الوكيل الملاحي المختار"),
+    ("quote ref", "مرجع العرض"),
+    ("Freight actually booked so far", "تكلفة الشحن المسجَّلة فعلياً حتى الآن"),
+    ("vs quote", "مقارنة بالعرض"),
+    ("No freight cost booked against this shipment yet — the build-up above uses actual "
+     "booked costs, so shipping shows as zero until one is.",
+     "لم تُسجَّل بعد أي تكلفة شحن لهذه الشحنة — يعتمد التفصيل أعلاه على التكاليف المسجَّلة فعلياً، "
+     "لذا يظهر الشحن صفراً حتى تُسجَّل تكلفة."),
+    ("No quotation has been selected for this shipment yet — log one from the Quotations tab, "
+     "or the full quotation entry screen, so shipping cost can be tracked against what was "
+     "actually quoted.",
+     "لم يُحدَّد بعد عرض سعر لهذه الشحنة — سجّل عرضاً من تبويب عروض الأسعار، أو من شاشة إدخال "
+     "عروض الأسعار الكاملة، حتى يمكن متابعة تكلفة الشحن مقارنة بما عُرض فعلياً."),
+    ("Per machine / item", "لكل جهاز / صنف"),
+    ("Apportioned costs", "التكاليف الموزَّعة"),
+    ("Landed cost per unit", "تكلفة الوصول لكل وحدة"),
+    ("Costs are apportioned across items by each item's share of total goods value. For "
+     "serial numbers and allocations per item, use the full statement.",
+     "تُوزَّع التكاليف على الأصناف حسب حصة كل صنف من إجمالي قيمة البضاعة. للاطلاع على الأرقام "
+     "التسلسلية والتخصيصات لكل صنف، استخدم الكشف الكامل."),
+    ("No item lines recorded yet.", "لا توجد بنود أصناف مسجَّلة بعد."),
+    ("Shipping (freight)", "الشحن (النقل)"),
+    ("Customs & clearance", "الجمارك والتخليص"),
+    ("Bank charges", "مصاريف بنكية"),
+    ("Last-mile delivery", "التوصيل للميل الأخير"),
+    ("Other costs", "تكاليف أخرى"),
+    ("Bank Charges", "مصاريف بنكية"),
+    ("Last-Mile Delivery", "التوصيل للميل الأخير"),
+]))
+
+# ---- financial analysis report ----
+TRANSLATIONS.update(_d([
+    ("Financial analysis", "التحليل المالي"),
+    ("Total landed value", "إجمالي القيمة الواصلة"),
+    ("Every shipment, every cost element", "كل شحنة، وكل عنصر تكلفة"),
+    ("figures in", "الأرقام بعملة"),
+    ("shipments", "شحنات"),
+    ("No shipments in scope.", "لا توجد شحنات ضمن النطاق."),
+    ("Click a shipment to open its full Landed cost build-up. Every figure here is pulled "
+     "live from the cost lines, supplier invoices and freight quotations logged against "
+     "each shipment — nothing is entered here directly.",
+     "اضغط على شحنة لفتح تفصيل تكلفة الوصول الكامل الخاص بها. كل رقم هنا مأخوذ مباشرة من "
+     "بنود التكاليف وفواتير الموردين وعروض أسعار الشحن المسجَّلة على كل شحنة — لا يتم إدخال "
+     "أي شيء هنا مباشرة."),
+]))

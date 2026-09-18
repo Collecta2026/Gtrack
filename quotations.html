@@ -3,6 +3,9 @@
 {% block crumb %}{{ t("Quoted versus actual freight cost") }}{% endblock %}
 
 {% block actions %}
+  {% if current_user.can('edit_quotation') %}
+    <a class="btn sm" href="{{ url_for('finance.new_quotation') }}">{{ t("Log a received quote") }}</a>
+  {% endif %}
   <a class="btn ghost sm" href="{{ url_for('finance.quotations', export='xlsx') }}">{{ t("Excel") }}</a>
   <a class="btn ghost sm" href="{{ url_for('finance.quotations', export='pdf') }}">{{ t("PDF") }}</a>
 {% endblock %}
@@ -59,7 +62,14 @@
           <td class="small">{{ q.forwarder.name if q.forwarder else '—' }}</td>
           <td class="small">{{ q.quote_ref or '—' }}</td>
           <td class="small nowrap">{{ q.quote_date | shortdate }}</td>
-          <td class="num small">{{ q.quoted_amount | money(q.currency) }}</td>
+          <td class="num small">
+            {{ q.quoted_amount | money(q.currency) }}
+            {% if q.cost_breakdown %}
+              <div class="tiny muted">
+                {% for label, amount in q.cost_breakdown %}{{ label }}: {{ amount | money }}{% if not loop.last %} · {% endif %}{% endfor %}
+              </div>
+            {% endif %}
+          </td>
           <td class="num small">{{ q.transit_days ~ 'd' if q.transit_days else '—' }}</td>
           <td class="small nowrap">{{ q.valid_until | shortdate }}</td>
           <td>{% if q.is_selected %}<span class="pill green">{{ t("Selected") }}</span>{% endif %}</td>

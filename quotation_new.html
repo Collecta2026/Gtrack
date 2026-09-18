@@ -1,0 +1,68 @@
+{% extends "base.html" %}
+{% block heading %}{{ t("Log a received quote") }}{% endblock %}
+{% block crumb %}{{ t("Freight quotations") }}{% endblock %}
+
+{% block actions %}
+  <a class="btn ghost sm" href="{{ url_for('finance.quotations') }}">{{ t("Back to quotations") }}</a>
+{% endblock %}
+
+{% block content %}
+
+<div class="card">
+  <div class="card-head"><h2>{{ t("Received quote") }}</h2></div>
+  <div class="card-body">
+    <form method="post" id="quoteForm" action="">
+      <input type="hidden" name="next" value="{{ url_for('finance.quotations') }}">
+      <div class="grid c3">
+        <div class="field">
+          <label>{{ t("Shipment") }}</label>
+          <select id="shipmentSelect" required
+                  onchange="document.getElementById('quoteForm').action = {{ url_for('shipments.add_quotation', shipment_id=999999) | tojson }}.replace('999999', this.value)">
+            <option value="">{{ t("Select…") }}</option>
+            {% for s in shipments %}
+              <option value="{{ s.id }}">{{ s.reference_no }} — {{ s.origin or '—' }} → {{ s.destination or '—' }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="field">
+          <label>{{ t("Forwarder") }}</label>
+          <select name="forwarder_id" required>
+            <option value="">{{ t("Select…") }}</option>
+            {% for c in carriers %}<option value="{{ c.id }}">{{ c.name }}</option>{% endfor %}
+          </select>
+        </div>
+        <div class="field"><label>{{ t("Quote ref") }}</label><input type="text" name="quote_ref"></div>
+        <div class="field">
+          <label>{{ t("Currency") }}</label>
+          <select name="currency">{% for c in currencies %}<option {{ 'selected' if c == 'USD' }}>{{ c }}</option>{% endfor %}</select>
+        </div>
+        <div class="field"><label>{{ t("Quote date") }}</label><input type="date" name="quote_date" value="{{ today.isoformat() }}"></div>
+        <div class="field"><label>{{ t("Mode") }}</label>
+          <select name="mode">
+            <option value="">{{ t("Select…") }}</option>
+            {% for code, label in modes %}<option value="{{ code }}">{{ t(label) }}</option>{% endfor %}
+          </select>
+        </div>
+        <div class="field"><label>{{ t("Transit days") }}</label><input type="number" name="transit_days"></div>
+        <div class="field"><label>{{ t("Valid until") }}</label><input type="date" name="valid_until"></div>
+      </div>
+
+      <h3 style="margin:1rem 0 .3rem">{{ t("Cost elements") }}</h3>
+      <div class="tiny muted mb1">{{ t("Break the forwarder's price down to what it's actually made of — fill in whichever elements they itemised. They add up to the quoted total automatically.") }}</div>
+      <div class="grid c3">
+        {% for field, label in quote_cost_elements %}
+          <div class="field"><label>{{ t(label) }}</label><input type="number" step="any" name="{{ field }}"></div>
+        {% endfor %}
+      </div>
+
+      <div class="grid c3 mt1">
+        <div class="field"><label>{{ t("Total (only if not itemised above)") }}</label><input type="number" step="any" name="quoted_amount"></div>
+        <div class="field" style="grid-column:span 2"><label>{{ t("Notes") }}</label><input type="text" name="notes"></div>
+      </div>
+
+      <div class="btn-row mt1"><button class="btn sm" type="submit">{{ t("Log quotation") }}</button></div>
+    </form>
+  </div>
+</div>
+
+{% endblock %}

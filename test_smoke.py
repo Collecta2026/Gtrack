@@ -44,6 +44,113 @@ def get(client, url, expect=200, label=None):
     return resp
 
 
+# --------------------------------------------------------------------------
+# First-run setup: seed.py leaves zero accounts on purpose — the whole point
+# is that nobody ships with a known password. Everything else in this suite
+# logs in with a fixed set of demo emails/password, so bootstrap that set
+# here, through the exact screens a real deployment would use: the one-time
+# setup screen for the first admin, then Admin -> Users for everyone else.
+#
+# The setup screen itself is only ever exercised once per database — it
+# deliberately refuses to run again once an account exists (that's the point
+# of it) — so on a rerun against an already-set-up database (this suite is
+# meant to be safe to run repeatedly without reseeding), that part is skipped
+# and only the "make sure the demo cast exists" step runs, idempotently.
+# --------------------------------------------------------------------------
+print("\n=== First-run setup: from zero accounts to the first admin ===")
+with app.app_context():
+    starts_empty = User.query.count() == 0
+
+if starts_empty:
+    with app.test_client() as c0:
+        r = c0.get("/", follow_redirects=False)
+        check("a fresh install redirects anywhere to /setup",
+              r.status_code == 302 and "/setup" in (r.location or ""))
+        r = c0.get("/login", follow_redirects=False)
+        check("even /login redirects to /setup before the first account exists",
+              r.status_code == 302 and "/setup" in (r.location or ""))
+
+        r = c0.post("/setup", data={"name": "", "email": "zak@scientificgate.test",
+                                     "password": "demo1234", "confirm_password": "demo1234"},
+                    follow_redirects=True)
+        check("setup rejects a blank name", "Enter your name".encode() in r.data)
+
+        r = c0.post("/setup", data={"name": "Zak Saleh", "email": "zak@scientificgate.test",
+                                     "password": "short", "confirm_password": "short"},
+                    follow_redirects=True)
+        check("setup rejects a too-short password", b"least 6 characters" in r.data)
+
+        r = c0.post("/setup", data={"name": "Zak Saleh", "email": "zak@scientificgate.test",
+                                     "password": "demo1234", "confirm_password": "different"},
+                    follow_redirects=True)
+        check("setup rejects a mismatched confirmation", b"confirmation don" in r.data.lower()
+              or b"match" in r.data.lower())
+        with app.app_context():
+            check("nothing was created by the rejected attempts", User.query.count() == 0)
+
+        r = c0.post("/setup", data={"name": "Zak Saleh", "email": "zak@scientificgate.test",
+                                     "password": "demo1234", "confirm_password": "demo1234"},
+                    follow_redirects=True)
+        check("setup creates the admin account and signs them straight in",
+              r.status_code == 200 and b"admin account is ready" in r.data)
+        r_dash = c0.get("/", follow_redirects=False)
+        check("the new admin lands on the dashboard, no separate login needed",
+              r_dash.status_code == 200)
+
+    with app.app_context():
+        zak = User.query.filter_by(email="zak@scientificgate.test").first()
+        check("admin account has the CFO (full-access) role", bool(zak and zak.role_code == "cfo"))
+        check("admin chose their own password — nothing forces a change",
+              bool(zak) and not zak.must_change_password)
+
+    with app.test_client() as c0b:
+        r = c0b.get("/setup", follow_redirects=False)
+        check("setup steps aside once an account exists",
+              r.status_code == 302 and "/login" in (r.location or ""))
+else:
+    with app.app_context():
+        zak = User.query.filter_by(email="zak@scientificgate.test").first()
+        check("admin account from an earlier run is still there with the CFO role",
+              bool(zak and zak.role_code == "cfo"))
+
+# The rest of this suite logs in as a fixed cast of role-holders — create any
+# that don't already exist, as the CFO would from Admin -> Users, then
+# fast-forward each past the one-time "choose your own password" screen so
+# plain email/password logins behave the same as a user who's already been
+# through that once for real. Idempotent: a rerun against the same database
+# (no reseed) finds them all already in place and creates nothing.
+DEMO_TEAM = [
+    ("Amr El-Bagoury", "amr@scientificgate.test", "md"),
+    ("Khaled Salah", "finance@scientificgate.test", "finance"),
+    ("Sara Mahmoud", "sales1@scientificgate.test", "sales"),
+    ("Omar Fathy", "sales2@scientificgate.test", "sales"),
+    ("Mona Adel", "salesadmin@scientificgate.test", "sales_admin"),
+    ("Mostafa Hassan", "procurement@scientificgate.test", "logistics_admin"),
+    ("Nourhan Adel", "logistics@scientificgate.test", "logistics_admin"),
+    ("Hesham Zaki", "warehouse@scientificgate.test", "logistics_admin"),
+]
+with app.app_context():
+    role_ids = {r.code: r.id for r in Role.query.all()}
+    existing_emails = {e for (e,) in db.session.query(User.email).all()}
+missing_team = [row for row in DEMO_TEAM if row[1] not in existing_emails]
+
+with app.test_client() as c0c:
+    login(c0c, "zak@scientificgate.test")
+    for name, email, role_code in missing_team:
+        resp = c0c.post("/admin/users",
+                        data={"name": name, "email": email, "role_id": role_ids[role_code],
+                              "is_active": "1", "password": "demo1234"},
+                        follow_redirects=True)
+        check(f"POST create demo account {email}", resp.status_code == 200)
+
+with app.app_context():
+    for name, email, role_code in DEMO_TEAM:
+        u = User.query.filter_by(email=email).first()
+        check(f"{email} exists with role {role_code}", bool(u and u.role_code == role_code))
+        if u is not None:
+            u.must_change_password = False
+    db.session.commit()
+
 with app.app_context():
     shipment = Shipment.query.filter(Shipment.current_stage.notin_(
         [Stage.CANCELLED, Stage.RE_EXPORTED, Stage.WAREHOUSE])).first()
@@ -104,6 +211,7 @@ with app.test_client() as c:
         "/master-data/", "/master-data/suppliers", "/master-data/brands", "/master-data/carriers",
         "/master-data/consignees", "/master-data/customers", "/master-data/banks",
         "/reports/", "/reports/pipeline", "/reports/timing", "/reports/cost",
+        "/reports/financial-analysis",
         "/reports/brands", "/reports/equipment", "/reports/exceptions",
         "/admin/users", "/admin/roles", "/admin/notification-rules",
         "/admin/notifications", "/admin/audit",
@@ -417,6 +525,54 @@ with app.app_context():
             check(f"build-up reconciles for {_s.reference_no}", False)
     check(f"build-up reconciles exactly for all {len(_all_shipments)} shipments",
           _reconciled == len(_all_shipments), f"({_reconciled}/{len(_all_shipments)})")
+
+    # Every cost type the seed data actually uses should show up as a nonzero
+    # bucket somewhere across the register — otherwise a whole class of cost
+    # (bank charges, last-mile, etc.) would be silently invisible to finance.
+    _used_types = {c.cost_type for s in _all_shipments for c in s.costs}
+    _nonzero_buckets = set()
+    for _s in _all_shipments:
+        for g in _cost_buildup(_statement_data(_s)):
+            if g["amount"]:
+                _nonzero_buckets.add(g["key"])
+    check(f"every cost type in use ({sorted(_used_types)}) is reflected in some "
+          f"nonzero build-up bucket", len(_nonzero_buckets) == len(_BUILDUP_GROUPS),
+          f"(buckets with data: {sorted(_nonzero_buckets)})")
+
+print("\n=== Financial analysis report ===")
+with app.test_client() as c:
+    login(c, "finance@scientificgate.test")
+    r = get(c, "/reports/financial-analysis", label="financial analysis report renders")
+    body = r.data.decode()
+    for needle in ["Goods value", "Total landed cost", "Bank charges", "Last-mile delivery"]:
+        check(f"financial analysis shows '{needle}'", needle in body)
+    for fmt in ("xlsx", "csv", "pdf"):
+        get(c, f"/reports/financial-analysis/export?format={fmt}",
+            label=f"financial analysis export ({fmt})")
+
+    # _financial_analysis_rows() scopes itself through visible_shipments(), which
+    # reads current_user — that only resolves inside a request context, so push
+    # one here (rather than a bare app_context) with the finance user signed in,
+    # the same as the real request above.
+    with app.test_request_context():
+        from flask_login import login_user as _login_user
+        finance_user = User.query.filter_by(email="finance@scientificgate.test").first()
+        _login_user(finance_user)
+        from app.views.reports import _financial_analysis_rows
+        rows, bucket_keys = _financial_analysis_rows()
+        row_goods_sum = sum(r["goods_base"] for r in rows)
+        row_cost_sum = sum(r["cost_total"] for r in rows)
+        all_shipments = Shipment.query.all()
+        all_cost_lines_total = sum((cl.amount_base or 0) for cl in CostLine.query.all())
+        check("financial analysis row count matches the visible shipment register",
+              len(rows) == len(all_shipments), f"({len(rows)} vs {len(all_shipments)})")
+        check("financial analysis total cost matches every cost line booked in the system",
+              abs(row_cost_sum - all_cost_lines_total) < 0.01,
+              f"({row_cost_sum} vs {all_cost_lines_total})")
+        check("financial analysis buckets sum to the total cost, per row",
+              all(abs(sum(r["buckets"]) - r["cost_total"]) < 0.01 for r in rows))
+        check("financial analysis goods value ties back to shipments' invoice values",
+              abs(row_goods_sum - sum(s.total_value_base for s in all_shipments)) < 0.01)
 
 print("\n=== Help ===")
 with app.test_client() as c:
@@ -1108,7 +1264,8 @@ with app.test_client() as c:
     for lang in ("en", "ar"):
         c.get(f"/lang/{lang}", follow_redirects=True)
         for url in ("/help/", f"/shipments/{shipment_id}/statement", "/", "/reports/",
-                   f"/shipments/{shipment_id}/cost-buildup", "/finance/quotations/new"):
+                   f"/shipments/{shipment_id}/cost-buildup", "/finance/quotations/new",
+                   "/reports/financial-analysis"):
             body = c.get(url).data.decode()
             leaked = [k for k in symbolic if k in body]
             check(f"no raw keys on {url} ({lang})", not leaked, f"(leaked {leaked})")

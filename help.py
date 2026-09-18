@@ -13,6 +13,9 @@ MENU_GUIDE = [
     ("Dashboard", "dashboard", [
         ("What it is", "Your position at a glance — what is open, what is late, what is "
                        "arriving, what is waiting on someone."),
+        ("How to use it", "Open it first thing. Check Delayed and Machines unallocated, click "
+                          "through to anything shown in red, and run the notification sweep if "
+                          "you want the alert log refreshed before checking Notifications."),
         ("The tiles", "Open shipments counts anything still in flight. A shipment closes when "
                       "it is received into the warehouse, so the number stays meaningful. "
                       "Delayed means the ETA has passed and it has not arrived. Machines "
@@ -24,6 +27,10 @@ MENU_GUIDE = [
     ]),
     ("Search", "search", [
         ("What it is", "One box that finds a shipment by any reference anyone might quote at you."),
+        ("How to use it", "Type whatever reference you have into the box at the top of any page "
+                          "and press Search — a serial number, a customer name, an ACID, part of "
+                          "a product name. Open the result you need; if several match, the list "
+                          "shows which field matched each one so you can tell them apart."),
         ("What it searches", "Shipment reference, ACID number, bill of lading or air waybill, "
                              "purchase order number, supplier invoice number, machine serial "
                              "number, product description, model, HS code, quotation reference, "
@@ -34,6 +41,11 @@ MENU_GUIDE = [
     ]),
     ("Shipment register", "shipments", [
         ("What it is", "Every shipment in one filterable table."),
+        ("How to use it", "Start from Open if you only care what's still moving, or switch to All "
+                          "to include delivered and installed shipments too. Combine status, "
+                          "stage, brand, supplier, mode and route type across the top, add the "
+                          "free-text search for anything a filter doesn't cover, then click a row "
+                          "to open it. Excel, CSV and PDF export exactly what your filters show."),
         ("Filters", "Combine status, stage, brand, supplier, mode and route type with a "
                     "free-text search. Status defaults to open for operational roles and to all "
                     "for sales, who still care about a machine after it lands."),
@@ -49,10 +61,18 @@ MENU_GUIDE = [
     ("Pipeline board", "board", [
         ("What it is", "The same open shipments as cards across the twelve stages — the fastest "
                        "way to see where the bottleneck is."),
+        ("How to use it", "Scan left to right — a stage with cards piling up while its neighbours "
+                          "are empty is the bottleneck worth chasing. Click a card to open that "
+                          "shipment and move it on."),
         ("Note", "Shipments received into the warehouse in the last 45 days stay on the board so "
                  "the warehouse and installation columns are not empty."),
     ]),
     ("Shipment detail", "detail", [
+        ("How to use it", "Use the tabs along the top to jump straight to Items, Documents, Costs, "
+                          "Quotations, Customs & Form 4 or Comments — whichever you're on stays "
+                          "highlighted so you always know where you are. To move the shipment "
+                          "along, use Move to next stage on the Overview tab: it records the date, "
+                          "writes it to the timeline and fires any alert attached to that stage."),
         ("Overview", "Parties, route, references, dates and performance, plus the status timeline."),
         ("Routing & logistics", "The route type and the leg it represents, the from and to "
                                 "locations, the customs broker, the document type (master or "
@@ -100,6 +120,11 @@ MENU_GUIDE = [
     ("Cost & contents statement", "statement", [
         ("What it is", "The full financial trace for one shipment on a single page — reachable "
                        "from the Statement button on any shipment."),
+        ("How to use it", "Open it from Cost statement on any shipment — it's read-only, nothing "
+                          "to fill in, only to trace and export. If you want the plainer top-down "
+                          "version instead — goods value, then shipping, customs, bank charges and "
+                          "last-mile, arriving at one total — use Landed cost build-up on the same "
+                          "shipment page; the two always reconcile to the same landed total."),
         ("Items", "Every line in the shipment with quantity, value, serial numbers and who each "
                   "unit is allocated to."),
         ("Cost trace", "Every cost booked, grouped by category, showing original currency and the "
@@ -114,9 +139,32 @@ MENU_GUIDE = [
                               "actually cost to land in Cairo."),
         ("Export", "The whole statement exports to PDF or Excel."),
     ]),
+    ("Landed cost build-up", "buildup", [
+        ("What it is", "A separate, plain-English screen for one shipment: goods value from the "
+                       "invoice, plus shipping (priced from the winning quote, then reconciled "
+                       "against what was actually booked), plus customs & clearance, bank charges "
+                       "and last-mile delivery, arriving at the total cost of the machine — as "
+                       "opposed to the detailed Statement, which apportions all of this down to a "
+                       "landed cost per item and per serial."),
+        ("How to use it", "Open it from Landed cost build-up on any shipment. Read it top to "
+                          "bottom like a running total: each line adds to the one above it, and "
+                          "the total landed cost at the bottom always matches the Statement's "
+                          "figure — this screen just groups the same costs the way a finance "
+                          "person actually thinks about them, in five plain buckets instead of the "
+                          "finer cost-type list."),
+        ("Shipping", "Shown against the selected quotation's price, with what has actually been "
+                     "booked as freight alongside it and the variance between the two — logging a "
+                     "quotation and selecting it is what makes this comparison possible."),
+        ("Bank charges and last-mile delivery", "Only shown once a cost line is booked with that "
+                                                "category — add them from the Costs tab on the "
+                                                "shipment as they're incurred."),
+    ]),
     ("Purchase orders", "po", [
         ("What it is", "The start of the chain — the order raised on a supplier, before any "
                        "shipment exists."),
+        ("How to use it", "Raise the PO on the supplier first. Once they confirm it, record the "
+                          "supplier invoice against it. When the goods actually ship, create the "
+                          "shipment against this PO — that's what links the two together."),
         ("Lines", "Each line tracks ordered versus shipped versus outstanding, so a part-shipped "
                   "order is visible at a glance."),
         ("Supplier invoices", "Recorded against the PO and, once it exists, linked to the shipment "
@@ -126,11 +174,28 @@ MENU_GUIDE = [
     ("Freight quotations", "quotations", [
         ("What it is", "Every quotation logged across all shipments, plus the quoted-versus-actual "
                        "variance report."),
+        ("How to use it", "Log a quote as it arrives — either from the Quotations tab on the "
+                          "shipment itself, or from Log a received quote here, which lets you pick "
+                          "the shipment from a list first. Break the forwarder's price down to its "
+                          "cost elements (air/sea freight, export customs clearance, x-ray, origin "
+                          "handling, documentation, other) wherever they itemised it; the elements "
+                          "add up to the quoted total automatically, or type a single total if all "
+                          "you were given was one lump sum. Once you've compared the quotes, click "
+                          "Select on the one you're going with — that sets the shipment's forwarder "
+                          "and switches on the quoted-versus-actual comparison."),
+        ("Cost elements", "A quote broken into freight, export clearance, x-ray, handling, "
+                          "documentation and other is worth far more than one total when comparing "
+                          "two forwarders, or reconciling the quote against what actually gets "
+                          "invoiced — a quote logged with only a lump sum still works, it just "
+                          "can't be compared element by element."),
         ("Currency", "Quotes usually arrive in USD and freight invoices often in EGP, so both "
                      "sides are converted to the base currency before comparison."),
     ]),
     ("Serial register", "assets", [
         ("What it is", "Every individual machine, searchable by serial number."),
+        ("How to use it", "Search by serial number, or open a unit straight from a shipment's "
+                          "Items & allocation tab. The unit's own page then shows its whole "
+                          "history — PO, shipment, route, customer, installation — in one place."),
         ("Status", "In transit, in stock, allocated, delivered, installed."),
         ("Warranty", "Warranty starts at installation (or warehouse receipt if no installation is "
                      "recorded) and the register shows whether it is still active — this is your "
@@ -140,6 +205,9 @@ MENU_GUIDE = [
     ]),
     ("Allocations", "allocations", [
         ("What it is", "Which machine belongs to which customer, and what stage each is at."),
+        ("How to use it", "Work down Awaiting installation first — it's the queue nothing else "
+                          "surfaces. Assign unallocated stock to a customer from a shipment's "
+                          "Items & allocation tab as soon as you know who it's for."),
         ("Awaiting installation", "Allocated but not yet confirmed installed — the sales and "
                                   "installation queue."),
         ("Unallocated stock", "Units with no customer assigned, so nothing sits forgotten in the "
@@ -147,6 +215,9 @@ MENU_GUIDE = [
     ]),
     ("Customers", "customers", [
         ("What it is", "Per customer, everything they are waiting for and everything installed."),
+        ("How to use it", "Open the customer before you ring them, not the shipment register — "
+                          "everything they're waiting for and everything already installed is "
+                          "already gathered on their one page."),
         ("Why it matters", "This is the screen a sales account manager lives in: it answers "
                            "\"where is my customer's machine\" without them asking logistics."),
         ("Scoping", "A sales user sees only their own customers. Managers see all."),
@@ -154,6 +225,9 @@ MENU_GUIDE = [
     ("Fulfilment centre stock", "hubstock", [
         ("What it is", "What is currently sitting in the Jebel Ali free zone, waiting to be "
                        "called forward against an order."),
+        ("How to use it", "Check it before confirming a re-export leg — a part-called line shows "
+                          "what's actually left to draw on. Anything sorted amber or red has been "
+                          "sitting a while and is tying up cash, so it's worth chasing forward."),
         ("How a balance is worked out", "A line counts as held once its inbound leg has landed. "
                                         "When an order calls stock forward, the re-export leg "
                                         "links back to that line and the balance falls. A "
@@ -166,24 +240,47 @@ MENU_GUIDE = [
     ("Shipment costs", "costs", [
         ("What it is", "Every cost line across every shipment, filterable by category and payment "
                        "status."),
+        ("How to use it", "Filter by category or payment status to work through what's "
+                          "outstanding, and mark a line paid as soon as it's actually settled so "
+                          "the unpaid total here — and the landed cost on every shipment it feeds "
+                          "— stays trustworthy."),
         ("Totals", "Total, unpaid, partial and overdue, all converted to the base currency."),
     ]),
     ("Form 4 register", "form4", [
         ("What it is", "Bank-side import registrations and recorded exemptions."),
+        ("How to use it", "Check the gap list first. Any open shipment on it needs a Form 4 "
+                          "record raised against the financing bank — or marking exempt with a "
+                          "reason, for a low-value shipment below the reporting threshold — before "
+                          "it reaches customs."),
         ("Gap list", "Open shipments with no Form 4 record at all, so nothing reaches customs "
                      "unregistered."),
     ]),
     ("Reports & KPIs", "reports", [
-        ("Timing", "Average transit time by mode and lane, and average customs clearance time "
-                   "measured from arrival to release."),
-        ("Performance", "On-time arrival against ETA, and supplier performance including delay "
-                        "frequency and lead time."),
-        ("Cost", "Cost per shipment, cost per kilogram, and cost by category."),
-        ("Exposure", "Value of goods in transit by currency, and the document-gap list."),
-        ("Full register", "Exports every shipment with timing and cost columns to Excel, CSV or PDF."),
+        ("What it is", "The headline KPI tiles, plus a submenu of the individual reports — each "
+                       "its own page rather than one long page combining everything."),
+        ("How to use it", "Open Reports & KPIs for the KPI tiles and the menu of reports. Pick "
+                          "Pipeline & ageing, Timing & routes, Cost breakdown, Brands & suppliers, "
+                          "Equipment & value or Exceptions — the submenu shown along the top of "
+                          "every report page moves between them without going back to the hub. "
+                          "Full register (Excel/CSV/PDF) on the hub exports every shipment with "
+                          "timing and cost columns, whatever report you're actually looking at."),
+        ("Pipeline & ageing", "Where open shipments sit right now, and which ones have been "
+                              "sitting in their current stage the longest."),
+        ("Timing & routes", "Average transit time by mode and lane, average customs clearance "
+                            "time from arrival to release, and direct versus the fulfilment "
+                            "centre route."),
+        ("Cost breakdown", "Cost per shipment, cost per kilogram, and cost by category."),
+        ("Brands & suppliers", "Volume, value and transit performance by brand and by supplier, "
+                               "including delay frequency and lead time."),
+        ("Equipment & value", "Serialised equipment by status, and the value of goods currently "
+                              "in transit by currency."),
+        ("Exceptions", "The document-gap list and rows with contradictory dates."),
     ]),
     ("Notifications", "notifications", [
         ("What it is", "Every alert the rule engine has generated, with what was sent and to whom."),
+        ("How to use it", "Scan it after a notification sweep to see what fired. If a sales user "
+                          "says they didn't get an alert about their own customer, check here "
+                          "first — Routing below explains why they might not have."),
         ("Routing", "Sales alerts go only to the account manager who owns an allocated customer on "
                     "that shipment — not the whole team."),
         ("Test build", "Alerts are written to the log rather than emailed. Setting "
@@ -193,6 +290,9 @@ MENU_GUIDE = [
         ("What it is", "Suppliers and trading parties, locations and facilities, customs "
                        "brokers, brands, carriers, consignee entities, customers and banks. Each "
                        "record can be edited in place from its row."),
+        ("How to use it", "Open the relevant list and edit a record in place from its row rather "
+                          "than recreating it. Keep names consistent — a supplier entered two "
+                          "different ways silently splits its totals across every report."),
         ("Party type", "Suppliers are typed as manufacturer, trading supplier, internal entity or "
                        "freight agent. Typing our own entities as internal is what lets the "
                        "system tell an intercompany movement from a third-party purchase."),
@@ -204,7 +304,17 @@ MENU_GUIDE = [
                            "silently split every total."),
     ]),
     ("Admin: users, roles, authorisation, FX rates, audit", "admin", [
-        ("Users", "Create accounts and assign each one a role."),
+        ("How to use it", "Create the account under Users, assign its role, and leave the "
+                          "password blank — the system generates a temporary one and shows it "
+                          "once, in the confirmation message, for you to pass on. The new account "
+                          "is asked to set its own password the moment it first signs in. If "
+                          "someone forgets theirs later, use Reset password on their row for a "
+                          "fresh temporary one, the same way — you never need to know or set what "
+                          "they actually pick. Check what a role can access, or extend it, on the "
+                          "Authorisation matrix."),
+        ("Users", "Create accounts and assign each one a role. A row with 'Temporary password — "
+                 "not yet set their own' is still on the password you (or the system) gave it; "
+                 "that clears itself the moment the user sets their own."),
         ("Roles", "The role matrix — CFO, MD, Finance, Sales, Sales Admin and Logistics Admin "
                  "out of the box, matching the company's actual positions. The CFO can add more "
                  "at any time from Admin -> Roles."),
@@ -237,7 +347,22 @@ WORKFLOWS = [
     ("Chasing what a shipment actually cost",
      "Open the shipment and click Statement. It lists every item, every cost booked against it "
      "with payment status, the landed total, and the landed cost per unit. Export it to PDF for "
-     "the file or Excel to work on."),
+     "the file or Excel to work on. For the short version instead — goods value, shipping, "
+     "customs, bank charges and last-mile in one running total — click Landed cost build-up on "
+     "the same shipment; the two always agree on the final figure."),
+    ("Comparing forwarder quotes and picking one",
+     "Log each quote as it comes in — either from the shipment's Quotations tab, or from Log a "
+     "received quote under Freight quotations, which lets you pick the shipment first. Break each "
+     "one down to its cost elements (freight, export clearance, x-ray, handling, documentation) "
+     "wherever the forwarder itemised it, so they're actually comparable rather than one number "
+     "each. Once you've decided, click Select on the winning quote — that sets the shipment's "
+     "forwarder and switches on the quoted-versus-actual comparison once real freight is booked."),
+    ("Setting someone up with a login",
+     "Create their account under Admin -> Users with their role, and leave the password field "
+     "blank. The confirmation message shows a temporary password once — copy it to them along "
+     "with their email address. The first time they sign in, they're asked to set their own "
+     "password before they can do anything else. If they ever forget it, open their row and click "
+     "Reset password for a new temporary one — you don't need to know or choose what they land on."),
     ("Finding a machine you only have a serial number for",
      "Type the serial into Search. You get the unit, its status, the shipment that carried it, "
      "and the customer it went to — and from the unit page, its full history back to the PO."),

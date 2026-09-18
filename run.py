@@ -53,6 +53,6 @@ if __name__ == "__main__":
     print(f"  {Config.ORG_NAME}")
     print(f"  Data: {Config.database_label()}")
     print(f"\n  Open http://127.0.0.1:{port}")
-    print(f"  Sign in with any demo account, password: demo1234")
+    print(f"  No accounts yet — the app walks you through creating the admin one.")
     print(f"  Press Ctrl+C to stop.\n")
     app.run(host="0.0.0.0", port=port, debug=debug)

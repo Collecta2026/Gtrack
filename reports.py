@@ -10,6 +10,7 @@ from ..models import (db, Shipment, ShipmentItem, Asset, Allocation, CostLine,
 from ..i18n import t
 from ..auth import permission_required, visible_shipments
 from ..exports import export_response
+from .shipments import _statement_data, _cost_buildup, COST_BUILDUP_GROUPS
 
 bp = Blueprint("reports", __name__)
 
@@ -33,6 +34,7 @@ REPORT_PAGES = [
     ("reports.pipeline", "Pipeline & ageing"),
     ("reports.timing", "Timing & routes"),
     ("reports.cost", "Cost breakdown"),
+    ("reports.financial_analysis", "Financial analysis"),
     ("reports.brands", "Brands & suppliers"),
     ("reports.equipment", "Equipment & value"),
     ("reports.exceptions", "Exceptions"),
@@ -170,6 +172,74 @@ def cost():
 
     return render_template("reports/cost.html", cost_rows=cost_rows, total_cost=total_cost,
                            cost_per_shipment=cost_per_shipment, cost_per_kg=cost_per_kg)
+
+
+def _financial_analysis_rows():
+    """One row per visible shipment, every cost captured — goods value from the
+    invoice, then each landed-cost bucket (the same ones the per-shipment
+    Landed cost build-up screen uses, so the two always agree), paid/unpaid,
+    and the resulting total. This is the one place that pulls every cost
+    element together across the whole register for the finance manager,
+    rather than one shipment or one cost type at a time."""
+    shipments, _ = _shipments()
+    bucket_keys = [key for key, _, _ in COST_BUILDUP_GROUPS]
+    rows = []
+    for s in shipments:
+        d = _statement_data(s)
+        groups = {g["key"]: g["amount"] for g in _cost_buildup(d)}
+        rows.append(dict(
+            shipment=s,
+            goods_base=d["goods_base"],
+            buckets=[groups.get(k, 0.0) for k in bucket_keys],
+            cost_total=d["cost_total"],
+            paid_total=d["paid_total"],
+            unpaid_total=d["unpaid_total"],
+            landed_total=d["landed_total"],
+        ))
+    return rows, bucket_keys
+
+
+@bp.route("/financial-analysis")
+@permission_required("view_reports")
+def financial_analysis():
+    """Every shipment, every cost element, in one table — goods value through
+    to total landed cost — for the finance manager to review the whole
+    portfolio at once rather than one shipment's build-up at a time."""
+    rows, bucket_keys = _financial_analysis_rows()
+    bucket_labels = [t(label) for _, label, _ in COST_BUILDUP_GROUPS]
+
+    totals = dict(
+        goods_base=sum(r["goods_base"] for r in rows),
+        buckets=[sum(r["buckets"][i] for r in rows) for i in range(len(bucket_keys))],
+        cost_total=sum(r["cost_total"] for r in rows),
+        paid_total=sum(r["paid_total"] for r in rows),
+        unpaid_total=sum(r["unpaid_total"] for r in rows),
+        landed_total=sum(r["landed_total"] for r in rows),
+    )
+    return render_template("reports/financial_analysis.html", rows=rows,
+                           bucket_labels=bucket_labels, totals=totals)
+
+
+@bp.route("/financial-analysis/export")
+@permission_required("view_reports")
+def financial_analysis_export():
+    fmt = request.args.get("format", "xlsx")
+    rows, bucket_keys = _financial_analysis_rows()
+    bucket_labels = [t(label) for _, label, _ in COST_BUILDUP_GROUPS]
+
+    headers = (["Shipment", "Stage", "Goods value"] + bucket_labels +
+               ["Total cost", "Paid", "Unpaid", "Total landed cost"])
+    out_rows = []
+    for r in rows:
+        out_rows.append([
+            r["shipment"].reference_no, r["shipment"].stage_label,
+            round(r["goods_base"], 2),
+            *[round(v, 2) for v in r["buckets"]],
+            round(r["cost_total"], 2), round(r["paid_total"], 2),
+            round(r["unpaid_total"], 2), round(r["landed_total"], 2),
+        ])
+    return export_response(fmt, "financial_analysis", "Financial analysis",
+                           headers, out_rows, subtitle=f"{len(out_rows)} shipments")
 
 
 @bp.route("/brands")

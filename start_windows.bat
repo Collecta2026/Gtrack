@@ -32,7 +32,7 @@ if errorlevel 1 goto :failed
 echo.
 echo  [3/3] Starting Gtrack...
 echo        Open http://127.0.0.1:5000 in your browser.
-echo        Sign in with any demo account, password: demo1234
+echo        No accounts yet - the app walks you through creating the admin one.
 echo        Close this window or press Ctrl+C to stop.
 echo.
 %PY% run.py

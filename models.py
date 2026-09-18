@@ -171,6 +171,8 @@ COST_TYPES = [
     ("repacking", "Repacking"),
     ("relabelling", "Relabelling"),
     ("insurance", "Insurance"),
+    ("bank_charges", "Bank Charges"),
+    ("last_mile", "Last-Mile Delivery"),
     ("other", "Other"),
 ]
 
@@ -271,10 +273,20 @@ class Role(db.Model):
 
 class User(UserMixin, db.Model):
     __tablename__ = "users"
+    # On SQLite (dev/test only — Postgres never reuses a serial id), plain INTEGER
+    # PRIMARY KEY can hand a deleted user's old id to the next new user. Audit-trail
+    # rows referencing a user by id are kept even after that user is deleted, so a
+    # reused id would make a brand-new account look like it already has history.
+    # AUTOINCREMENT guarantees ids are never reused, matching real Postgres behaviour.
+    __table_args__ = {"sqlite_autoincrement": True}
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(120), nullable=False)
     email = db.Column(db.String(160), unique=True, nullable=False)
     password_hash = db.Column(db.String(256))
+    # Set whenever Admin gives this account a password (a brand-new account, or an
+    # explicit reset) rather than the user choosing it themselves — cleared the
+    # moment they set their own on the forced change-password screen.
+    must_change_password = db.Column(db.Boolean, default=False)
     role_id = db.Column(db.Integer, db.ForeignKey("roles.id"))
     phone = db.Column(db.String(40))
     language = db.Column(db.String(5), default="en")   # "en" or "ar"
@@ -552,6 +564,19 @@ class SupplierInvoice(db.Model):
         return t(dict(PAYMENT_STATUSES).get(self.payment_status, self.payment_status))
 
 
+# The cost elements a freight forwarder's quote is actually made of. Column name
+# first (what FreightQuotation stores it as, and what the entry form's field is
+# named), label second (shown on screen, and passed through t()).
+QUOTE_COST_ELEMENTS = [
+    ("freight_cost", "Air / sea freight"),
+    ("export_clearance_cost", "Export customs clearance"),
+    ("xray_cost", "X-ray / scanning"),
+    ("origin_handling_cost", "Origin handling"),
+    ("documentation_cost", "Documentation fee"),
+    ("other_cost", "Other"),
+]
+
+
 class FreightQuotation(db.Model):
     __tablename__ = "freight_quotations"
     id = db.Column(db.Integer, primary_key=True)
@@ -567,8 +592,30 @@ class FreightQuotation(db.Model):
     is_selected = db.Column(db.Boolean, default=False)
     notes = db.Column(db.String(300))
 
+    # The quote broken down to what it is actually made of, rather than one lump
+    # sum — a forwarder's quote bundles several separate charges, and comparing
+    # quotes (or reconciling one against what was actually booked later) needs
+    # those separately, not just the total they add up to.
+    freight_cost = db.Column(db.Float)
+    export_clearance_cost = db.Column(db.Float)
+    xray_cost = db.Column(db.Float)
+    origin_handling_cost = db.Column(db.Float)
+    documentation_cost = db.Column(db.Float)
+    other_cost = db.Column(db.Float)
+
     shipment = db.relationship("Shipment", back_populates="quotations")
     forwarder = db.relationship("Carrier")
+
+    @property
+    def elements_total(self):
+        return sum((getattr(self, field) or 0) for field, _ in QUOTE_COST_ELEMENTS)
+
+    @property
+    def cost_breakdown(self):
+        """The non-zero elements, labelled — empty for an older or lump-sum-only quote."""
+        from .i18n import t
+        return [(t(label), getattr(self, field)) for field, label in QUOTE_COST_ELEMENTS
+                if getattr(self, field)]
 
 
 # --------------------------------------------------------------------------

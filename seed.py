@@ -30,7 +30,7 @@ from app.models import (db, Role, User, Supplier, Brand, Carrier, ConsigneeEntit
                         FreightQuotation, Shipment, ShipmentItem, Asset, Allocation,
                         StatusHistory, Document, CostLine, BankRegistration, Comment,
                         ExchangeRate, Location, CustomsBroker, AssetMovement,
-                        Stage, DOC_TYPES)
+                        Stage, DOC_TYPES, COST_TYPES)
 from app.auth import ROLE_DEFINITIONS
 from app.notifications import seed_default_rules
 
@@ -359,18 +359,6 @@ class Cache:
 # Users and roles
 # --------------------------------------------------------------------------
 
-DEMO_USERS = [
-    ("Zak Saleh", "zak@scientificgate.test", "cfo"),
-    ("Amr El-Bagoury", "amr@scientificgate.test", "md"),
-    ("Khaled Salah", "finance@scientificgate.test", "finance"),
-    ("Sara Mahmoud", "sales1@scientificgate.test", "sales"),
-    ("Omar Fathy", "sales2@scientificgate.test", "sales"),
-    ("Mona Adel", "salesadmin@scientificgate.test", "sales_admin"),
-    ("Mostafa Hassan", "procurement@scientificgate.test", "logistics_admin"),
-    ("Nourhan Adel", "logistics@scientificgate.test", "logistics_admin"),
-    ("Hesham Zaki", "warehouse@scientificgate.test", "logistics_admin"),
-]
-
 DEMO_CUSTOMERS = [
     ("Nile Dental Centre", "Cairo", "Dr Hany Sobhy"),
     ("Alexandria Smile Clinic", "Alexandria", "Dr Mona Farid"),
@@ -383,22 +371,17 @@ DEMO_CUSTOMERS = [
 ]
 
 
-def seed_roles_and_users():
+def seed_roles():
+    """Only the role matrix — no accounts. The first account is created by whoever
+    opens the app for the first time, on the setup screen (see auth.py); nothing
+    here should ever hand out a login."""
     roles = {}
     for code, name, description, perms in ROLE_DEFINITIONS:
         role = Role(code=code, role_name=name, description=description, permissions=perms)
         db.session.add(role)
         roles[code] = role
     db.session.flush()
-
-    users = {}
-    for name, email, role_code in DEMO_USERS:
-        user = User(name=name, email=email, role_id=roles[role_code].id, is_active_flag=True)
-        user.set_password("demo1234")
-        db.session.add(user)
-        users[email] = user
-    db.session.flush()
-    return roles, users
+    return roles
 
 
 SGE_LOCATIONS = [
@@ -438,13 +421,14 @@ def seed_brokers():
     return out
 
 
-def seed_customers(users):
-    sales_users = [u for u in users.values() if u.role and u.role.code == "sales"]
+def seed_customers():
+    # No sales reps exist yet at seed time — the admin creates them after first
+    # login, and can assign each customer to its owner from the Customers screen.
     customers = []
     for i, (name, city, contact) in enumerate(DEMO_CUSTOMERS):
         cust = Customer(customer_name=name, city=city, contact_name=contact,
                         install_site=f"{name}, {city}",
-                        sales_owner_id=sales_users[i % len(sales_users)].id if sales_users else None,
+                        sales_owner_id=None,
                         contact_phone=f"+20 1{random.randint(10,29)} {random.randint(1000000,9999999)}")
         db.session.add(cust)
         customers.append(cust)
@@ -469,10 +453,8 @@ def load_rows():
     return rows
 
 
-def migrate(cache, users, locations, brokers):
+def migrate(cache, locations, brokers):
     rows = load_rows()
-    admin = users["zak@scientificgate.test"]
-    logistics = users["logistics@scientificgate.test"]
     shipments = []
 
     for idx, row in enumerate(rows, start=1):
@@ -549,7 +531,7 @@ def migrate(cache, users, locations, brokers):
             stage_entered_at=clearance_date or eta or invoice_date or date.today(),
             legacy_status=clean_text(row.get("Status")),
             remarks=clean_text(row.get("Notes")) or clean_text(row.get("Remarks")),
-            created_by_id=admin.id,
+            created_by_id=None,
         )
 
         # closed shipments get their actual dates filled in from what the sheet knows
@@ -665,7 +647,7 @@ def migrate(cache, users, locations, brokers):
                 shipment_id=shipment.id, doc_type=doc_type, is_required=True,
                 is_received=docs_held,
                 file_name=f"{shipment.reference_no}_{doc_type}.pdf" if docs_held else None,
-                uploaded_by_id=logistics.id if docs_held else None,
+                uploaded_by_id=None,
                 uploaded_at=datetime.utcnow() if docs_held else None,
                 notes="Migrated from 'DOC in Office' flag" if docs_held else "Outstanding"))
 
@@ -695,7 +677,7 @@ def migrate(cache, users, locations, brokers):
             seen.add(code)
             db.session.add(StatusHistory(
                 shipment_id=shipment.id, status_code=code, event_date=when,
-                recorded_by_id=logistics.id, note="Reconstructed during migration"))
+                recorded_by_id=None, note="Reconstructed during migration"))
 
         shipments.append(shipment)
 
@@ -707,11 +689,7 @@ def migrate(cache, users, locations, brokers):
 # Demo layer: serials, allocations, POs, quotations, comments
 # --------------------------------------------------------------------------
 
-def seed_demo_layer(shipments, customers, users):
-    procurement = users["procurement@scientificgate.test"]
-    logistics = users["logistics@scientificgate.test"]
-    sales_users = [u for u in users.values() if u.role and u.role.code == "sales"]
-
+def seed_demo_layer(shipments, customers):
     equipment_shipments = [s for s in shipments
                            if s.brand and s.brand.category == "equipment"][:45]
 
@@ -750,7 +728,7 @@ def seed_demo_layer(shipments, customers, users):
             customer_id=customer.id,
             quantity=1,
             allocated_date=allocated_on,
-            allocated_by_id=random.choice(sales_users).id if sales_users else None,
+            allocated_by_id=None,
             expected_install_date=allocated_on + timedelta(days=random.randint(7, 45)),
             sales_notes=random.choice([
                 "Customer confirmed site readiness.",
@@ -795,7 +773,7 @@ def seed_demo_layer(shipments, customers, users):
                 status="fulfilled" if not s.is_open else random.choice(["confirmed", "part_shipped"]),
                 currency="USD",
                 incoterm=random.choice(["FOB", "CIF", "EXW", "CFR"]),
-                created_by_id=procurement.id,
+                created_by_id=None,
                 notes="Created from the migrated shipment history.")
             db.session.add(po)
             db.session.flush()
@@ -862,13 +840,48 @@ def seed_demo_layer(shipments, customers, users):
         "Warehouse confirmed all serials match the packing list.",
         "Clearance agent's invoice received, passed to finance for payment.",
     ]
-    all_users = list(users.values())
+    # No seeded users to attribute these to — shown as "system" in the UI (the
+    # comment thread already handles a commentless author, see detail.html).
     for s in random.sample(shipments, k=min(35, len(shipments))):
         for _ in range(random.randint(1, 3)):
             db.session.add(Comment(
-                shipment_id=s.id, user_id=random.choice(all_users).id,
+                shipment_id=s.id, user_id=None,
                 body=random.choice(comment_texts),
                 created_at=datetime.utcnow() - timedelta(days=random.randint(1, 120))))
+
+    # ---- fill out the cost picture: the source spreadsheet only ever gave us
+    # freight and customs duty, which would leave every other cost type — bank
+    # charges, last-mile delivery, terminal handling, brokerage, insurance,
+    # storage — permanently at zero on the Landed cost build-up and the
+    # Financial analysis report. Scatter a realistic spread of the rest across
+    # the shipments that already have a freight cost booked (i.e. costs have
+    # started being logged against them at all).
+    costed = [s for s in shipments if any(c.cost_type == "freight" for c in s.costs)]
+    _EXTRA_COST_RULES = [
+        # (cost_type, odds it appears on a given shipment, amount range in EGP, payable_to)
+        ("clearance_fee", 0.55, (400, 2200), "Customs Broker"),
+        ("broker_fee", 0.45, (300, 1500), "Customs Broker"),
+        ("thc", 0.40, (600, 3500), "Shipping Line / Airline"),
+        ("bank_charges", 0.60, (150, 900), "Bank"),
+        ("last_mile", 0.65, (250, 3000), "Local Delivery Contractor"),
+        ("insurance", 0.30, (200, 2500), "Insurance Underwriter"),
+        ("storage", 0.15, (500, 6000), "Port / Airport Authority"),
+        ("express_fee", 0.10, (300, 1800), "Courier"),
+    ]
+    for s in costed:
+        for cost_type, odds, (lo, hi), payable_to in _EXTRA_COST_RULES:
+            if random.random() > odds:
+                continue
+            amount = round(random.uniform(lo, hi), 2)
+            status = random.choice(["paid", "paid", "unpaid", "partial"])
+            db.session.add(CostLine(
+                shipment_id=s.id, cost_type=cost_type,
+                description=f"{dict(COST_TYPES).get(cost_type, cost_type)} (demo data)",
+                amount=amount, currency="EGP", amount_base=amount,
+                payable_to=payable_to, paid_by="company",
+                payment_status=status,
+                paid_date=(s.clearance_date or s.eta or date.today()) if status == "paid" else None))
+    db.session.flush()
 
     # ---- due dates on unpaid costs so the overdue alert has something to find ----
     for cost in CostLine.query.filter(CostLine.payment_status != "paid").all():
@@ -1051,24 +1064,24 @@ def main():
         db.create_all()
         print("Schema created.")
 
-        roles, users = seed_roles_and_users()
-        print(f"  {len(roles)} roles, {len(users)} users")
+        roles = seed_roles()
+        print(f"  {len(roles)} roles (no accounts — the first person to open the app creates one)")
 
         locations = seed_locations()
         brokers = seed_brokers()
         print(f"  {len(locations)} locations, {len(brokers)} customs brokers")
 
-        customers = seed_customers(users)
+        customers = seed_customers()
         print(f"  {len(customers)} customers")
 
         cache = Cache()
-        shipments = migrate(cache, users, locations, brokers)
+        shipments = migrate(cache, locations, brokers)
         print(f"  {len(shipments)} shipments migrated from the spreadsheet")
         print(f"  {len(cache.suppliers)} suppliers, {len(cache.brands)} brands, "
               f"{len(cache.carriers)} carriers, {len(cache.consignees)} consignees")
 
         make_open_pipeline(shipments)
-        seed_demo_layer(shipments, customers, users)
+        seed_demo_layer(shipments, customers)
 
         linked, moves = link_hub_journeys(shipments, locations)
         print(f"  {linked} re-export lines traced back through the fulfilment centre")
@@ -1084,9 +1097,8 @@ def main():
         fired = run_rule_sweep()
         print(f"  {len(fired)} notifications generated by the first rule sweep")
 
-        print("\nSeed complete. Sign in with any demo account, password: demo1234")
-        for name, email, role in DEMO_USERS:
-            print(f"  {email:42s} {role}")
+        print("\nSeed complete — no accounts exist yet.")
+        print("Open the app and it will walk you through creating the admin account.")
 
 
 if __name__ == "__main__":

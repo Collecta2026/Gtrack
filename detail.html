@@ -7,7 +7,8 @@
 {% endblock %}
 
 {% block actions %}
-  <a class="btn sm" href="{{ url_for('shipments.statement', shipment_id=s.id) }}">{{ t("Cost statement") }}</a>
+  <a class="btn sm" href="{{ url_for('shipments.cost_buildup', shipment_id=s.id) }}">{{ t("Landed cost build-up") }}</a>
+  <a class="btn ghost sm" href="{{ url_for('shipments.statement', shipment_id=s.id) }}">{{ t("Cost statement") }}</a>
   {% if current_user.can('edit_shipment') %}
     <a class="btn ghost sm" href="{{ url_for('shipments.edit', shipment_id=s.id) }}">{{ t("Edit") }}</a>
   {% endif %}
@@ -17,7 +18,7 @@
 {% block content %}
 
 <div class="section-tabs">
-  <a href="#overview" class="active">{{ t("Overview") }}</a>
+  <a href="#overview">{{ t("Overview") }}</a>
   <a href="#items">{{ t("Items & allocation") }}</a>
   <a href="#documents">{{ t("Documents") }}</a>
   <a href="#costs">{{ t("Costs") }}</a>
@@ -25,6 +26,41 @@
   <a href="#customs">{{ t("Customs & Form 4") }}</a>
   <a href="#comments">{{ t("Comments") }}</a>
 </div>
+<script>
+// Keep the tab bar showing wherever you actually are, instead of snapping back to
+// Overview on every click/reload — the tabs are plain in-page anchors, so nothing
+// updated .active to match the section actually in view until now.
+(function(){
+  var tabs = document.querySelectorAll('.section-tabs a');
+  if(!tabs.length) return;
+  function setActive(hash){
+    var target = hash || '#overview';
+    tabs.forEach(function(a){
+      a.classList.toggle('active', a.getAttribute('href') === target);
+    });
+  }
+  setActive(window.location.hash);
+  tabs.forEach(function(a){
+    a.addEventListener('click', function(){ setActive(a.getAttribute('href')); });
+  });
+  window.addEventListener('hashchange', function(){ setActive(window.location.hash); });
+  // Update the highlighted tab as you scroll through the page too, not only on a
+  // click or a hash in the URL.
+  var sections = [];
+  tabs.forEach(function(a){
+    var el = document.querySelector(a.getAttribute('href'));
+    if(el) sections.push(el);
+  });
+  if('IntersectionObserver' in window && sections.length){
+    var observer = new IntersectionObserver(function(entries){
+      entries.forEach(function(entry){
+        if(entry.isIntersecting) setActive('#' + entry.target.id);
+      });
+    }, {rootMargin: '-40% 0px -55% 0px'});
+    sections.forEach(function(s){ observer.observe(s); });
+  }
+})();
+</script>
 
 <!-- ============ OVERVIEW ============ -->
 <div id="overview" class="grid c2" style="align-items:start">
@@ -626,7 +662,14 @@
           <td class="small"><strong>{{ q.forwarder.name if q.forwarder else '—' }}</strong></td>
           <td class="small">{{ q.quote_ref or '—' }}</td>
           <td class="small nowrap">{{ q.quote_date | shortdate }}</td>
-          <td class="num small">{{ q.quoted_amount | money(q.currency) }}</td>
+          <td class="num small">
+            {{ q.quoted_amount | money(q.currency) }}
+            {% if q.cost_breakdown %}
+              <div class="tiny muted">
+                {% for label, amount in q.cost_breakdown %}{{ label }}: {{ amount | money }}{% if not loop.last %} · {% endif %}{% endfor %}
+              </div>
+            {% endif %}
+          </td>
           <td class="num small">{{ q.transit_days ~ 'd' if q.transit_days else '—' }}</td>
           <td class="small nowrap">{{ q.valid_until | shortdate }}</td>
           <td>{% if q.is_selected %}<span class="pill green">{{ t("Selected") }}</span>{% endif %}</td>
@@ -658,18 +701,29 @@
             </select>
           </div>
           <div class="field"><label>{{ t("Quote ref") }}</label><input type="text" name="quote_ref"></div>
-          <div class="field"><label>{{ t("Amount") }}</label><input type="number" step="any" name="quoted_amount" required></div>
           <div class="field">
             <label>{{ t("Currency") }}</label>
             <select name="currency">{% for c in currencies %}<option {{ 'selected' if c == 'USD' }}>{{ c }}</option>{% endfor %}</select>
           </div>
           <div class="field"><label>{{ t("Quote date") }}</label><input type="date" name="quote_date" value="{{ today.isoformat() }}"></div>
+        </div>
+        <div class="tiny muted mt1">{{ t("Cost elements — fill in whichever the forwarder itemised; they add up to the quoted total automatically.") }}</div>
+        <div class="grid c3">
+          {% for field, label in quote_cost_elements %}
+            <div class="field"><label>{{ t(label) }}</label><input type="number" step="any" name="{{ field }}"></div>
+          {% endfor %}
+        </div>
+        <div class="grid c4">
+          <div class="field"><label>{{ t("Total (only if not itemised above)") }}</label><input type="number" step="any" name="quoted_amount"></div>
           <div class="field"><label>{{ t("Transit days") }}</label><input type="number" name="transit_days"></div>
           <div class="field"><label>{{ t("Valid until") }}</label><input type="date" name="valid_until"></div>
         </div>
         <div class="btn-row mt1"><button class="btn sm" type="submit">{{ t("Log quotation") }}</button></div>
       </form>
     </details>
+    <div class="tiny muted mt1">
+      <a href="{{ url_for('finance.new_quotation') }}">{{ t("Open the full quotation entry screen") }}</a>
+    </div>
   </div>
   {% endif %}
 </div>

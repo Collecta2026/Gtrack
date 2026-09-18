@@ -4,7 +4,8 @@ from flask import Blueprint, render_template, request
 from flask_login import login_required
 
 from ..models import (db, CostLine, SupplierInvoice, FreightQuotation, Shipment,
-                      BankRegistration, COST_TYPES, PAYMENT_STATUSES)
+                      BankRegistration, COST_TYPES, PAYMENT_STATUSES, Carrier,
+                      CURRENCIES, QUOTE_COST_ELEMENTS, MODES)
 from ..auth import any_permission
 from ..exports import export_response
 
@@ -99,6 +100,22 @@ def quotations():
         return export_response(fmt, "quote_variance", "Quoted vs actual freight", headers, rows)
 
     return render_template("finance/quotations.html", quotes=quotes, variances=variances)
+
+
+@bp.route("/quotations/new")
+@any_permission("edit_quotation")
+@login_required
+def new_quotation():
+    """A dedicated entry screen for a received forwarder quote — pick the
+    shipment it's for, then break the price down to what it's actually made
+    of (freight, export clearance, x-ray, handling, documentation, other)
+    rather than logging one lump sum."""
+    open_shipments = [s for s in Shipment.query.order_by(Shipment.reference_no.desc()).all()
+                      if s.is_open]
+    return render_template("finance/quotation_new.html", shipments=open_shipments,
+                           carriers=Carrier.query.order_by(Carrier.name).all(),
+                           currencies=CURRENCIES, quote_cost_elements=QUOTE_COST_ELEMENTS,
+                           modes=MODES, today=date.today())
 
 
 @bp.route("/bank-registrations")

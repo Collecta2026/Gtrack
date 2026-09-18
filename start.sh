@@ -28,7 +28,7 @@ fi
 echo ""
 echo "  [3/3] Starting Gtrack..."
 echo "        Open http://127.0.0.1:5000"
-echo "        Sign in with any demo account, password: demo1234"
+echo "        No accounts yet — the app walks you through creating the admin one."
 echo "        Press Ctrl+C to stop."
 echo ""
 "$PY" run.py

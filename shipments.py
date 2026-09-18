@@ -12,11 +12,12 @@ from ..models import (db, Shipment, ShipmentItem, Asset, Allocation, StatusHisto
                       Bank, PurchaseOrder, Stage, DOC_TYPES, COST_TYPES, PAYMENT_STATUSES,
                       MODES, SERVICE_TYPES, CURRENCIES, ASSET_STATUSES, to_base,
                       Location, CustomsBroker, ROUTE_TYPES, BL_TYPES,
-                      SHIPMENT_PAYMENT_TERMS, PAID_BY, ITEM_CATEGORIES)
+                      SHIPMENT_PAYMENT_TERMS, PAID_BY, ITEM_CATEGORIES, QUOTE_COST_ELEMENTS)
 from ..auth import permission_required, can_view_shipment, visible_shipments
 from ..notifications import fire_stage_rules
 from ..exports import export_response
 from ..audit import log_action
+from ..i18n import t
 
 bp = Blueprint("shipments", __name__)
 
@@ -186,6 +187,7 @@ def detail(shipment_id):
         brands=Brand.query.order_by(Brand.brand_name).all(),
         item_categories=ITEM_CATEGORIES,
         paid_by_options=PAID_BY,
+        quote_cost_elements=QUOTE_COST_ELEMENTS,
         next_stage=Stage.next_stage(shipment.current_stage),
     )
 
@@ -593,24 +595,36 @@ def mark_cost_paid(cost_id):
     return redirect(url_for("shipments.detail", shipment_id=cost.shipment_id) + "#costs")
 
 
+def _quotation_kwargs(form):
+    """Build FreightQuotation kwargs from a submitted form — shared by the quick
+    add on the shipment page and the standalone entry screen under Finance."""
+    elements = {field: _to_float(form.get(field), None) for field, _ in QUOTE_COST_ELEMENTS}
+    elements_total = sum(v or 0 for v in elements.values())
+    # A forwarder's quote is usually broken down; fall back to a manually typed
+    # lump sum for the rare one that only ever gives a single total.
+    quoted_amount = elements_total if elements_total else _to_float(form.get("quoted_amount"), None)
+    kwargs = dict(
+        forwarder_id=form.get("forwarder_id", type=int) or None,
+        quote_ref=form.get("quote_ref"),
+        quote_date=_parse_date(form.get("quote_date")) or date.today(),
+        quoted_amount=quoted_amount,
+        currency=form.get("currency") or "USD",
+        mode=form.get("mode"),
+        transit_days=form.get("transit_days", type=int),
+        valid_until=_parse_date(form.get("valid_until")),
+        notes=form.get("notes"))
+    kwargs.update(elements)
+    return kwargs
+
+
 @bp.route("/<int:shipment_id>/quotations/add", methods=["POST"])
 @permission_required("edit_quotation")
 def add_quotation(shipment_id):
     s = _get_shipment(shipment_id)
-    db.session.add(FreightQuotation(
-        shipment_id=s.id,
-        forwarder_id=request.form.get("forwarder_id", type=int) or None,
-        quote_ref=request.form.get("quote_ref"),
-        quote_date=_parse_date(request.form.get("quote_date")) or date.today(),
-        quoted_amount=_to_float(request.form.get("quoted_amount")),
-        currency=request.form.get("currency") or "USD",
-        mode=request.form.get("mode"),
-        transit_days=request.form.get("transit_days", type=int),
-        valid_until=_parse_date(request.form.get("valid_until")),
-        notes=request.form.get("notes")))
+    db.session.add(FreightQuotation(shipment_id=s.id, **_quotation_kwargs(request.form)))
     db.session.commit()
     flash("Quotation logged.", "success")
-    return redirect(url_for("shipments.detail", shipment_id=s.id) + "#quotations")
+    return redirect(request.form.get("next") or (url_for("shipments.detail", shipment_id=s.id) + "#quotations"))
 
 
 @bp.route("/quotations/<int:quote_id>/select", methods=["POST"])
@@ -710,7 +724,7 @@ def _statement_data(s):
     by_type = {}
     for c in s.costs:
         row = by_type.setdefault(c.cost_type, dict(
-            label=c.type_label, amount_base=0.0, lines=[], paid=0.0, unpaid=0.0))
+            cost_type=c.cost_type, label=c.type_label, amount_base=0.0, lines=[], paid=0.0, unpaid=0.0))
         row["amount_base"] += (c.amount_base or 0)
         row["lines"].append(c)
         if c.payment_status == "paid":
@@ -723,13 +737,28 @@ def _statement_data(s):
 
     # Landed cost is apportioned across items by their share of goods value —
     # the standard basis, and the only defensible one when a shipment mixes
-    # a CBCT unit with a box of consumables.
+    # a CBCT unit with a box of consumables. But before an invoice is entered,
+    # goods_base is 0 for every item, and dividing by it would silently zero
+    # out real, already-booked costs on every item row — the shipment-level
+    # totals above would still show the true cost_total, while the per-item
+    # table understated it to nothing. Fall back to sharing by quantity, and
+    # if there's no quantity either, split evenly, so booked costs always show
+    # up somewhere per item rather than vanishing for want of an invoice value.
+    total_qty = sum((item.qty or 0) for item in s.items)
+    item_count = len(s.items)
     # NB: the key is 'item_rows', not 'items' — in Jinja, d.items on a dict
     # resolves to the dict's own .items() method, not this key.
     item_rows = []
     for item in s.items:
         line_base = to_base(item.line_value, item.currency)
-        share = (line_base / goods_base) if goods_base else 0
+        if goods_base:
+            share = line_base / goods_base
+        elif total_qty:
+            share = (item.qty or 0) / total_qty
+        elif item_count:
+            share = 1.0 / item_count
+        else:
+            share = 0
         apportioned = cost_total * share
         landed = line_base + apportioned
         qty = item.qty or 0
@@ -782,6 +811,51 @@ def _statement_data(s):
         freight_actual_base=s.freight_actual_base,
         variance=s.quote_variance,
     )
+
+
+# The plain top-down build-up a finance person actually thinks in — goods value,
+# then shipping, customs, bank charges and last-mile — rather than the finer
+# cost-type list the detailed Statement breaks costs into. Every cost_type in
+# COST_TYPES must appear in exactly one bucket here, or its amount silently
+# falls into "Other costs" instead (see the leftover fold below).
+COST_BUILDUP_GROUPS = [
+    ("shipping", "Shipping (freight)", {"freight", "ex_works", "thc", "express_fee"}),
+    ("customs", "Customs & clearance", {"customs_duty", "customs_fees", "clearance_fee",
+                                        "broker_fee", "inspection", "fumigation"}),
+    ("bank", "Bank charges", {"bank_charges"}),
+    ("last_mile", "Last-mile delivery", {"last_mile", "delivery_order"}),
+    ("other", "Other costs", {"storage", "repacking", "relabelling", "insurance", "other"}),
+]
+
+
+def _cost_buildup(data):
+    """Fold the Statement's by-type totals into the five named buckets above,
+    so the build-up screen always reconciles exactly with the detailed Statement."""
+    by_code = {row["cost_type"]: row for row in data["by_type"]}
+    claimed = set()
+    groups = []
+    for key, label, codes in COST_BUILDUP_GROUPS:
+        amount = sum(by_code[c]["amount_base"] for c in codes if c in by_code)
+        claimed |= (codes & by_code.keys())
+        groups.append(dict(key=key, label=t(label), amount=amount))
+    leftover = sum(row["amount_base"] for code, row in by_code.items() if code not in claimed)
+    if leftover:
+        groups[-1]["amount"] += leftover
+    return groups
+
+
+@bp.route("/<int:shipment_id>/cost-buildup")
+@login_required
+def cost_buildup(shipment_id):
+    """A separate, plain-English screen: goods value from the invoice, plus the
+    shipping cost from the winning quote (or, once booked, what was actually
+    spent), plus customs, bank charges and last-mile delivery, arriving at the
+    total cost of the machine — as opposed to the detailed Statement, which
+    apportions all of this down to a landed cost per item and per serial."""
+    s = _get_shipment(shipment_id)
+    data = _statement_data(s)
+    groups = _cost_buildup(data)
+    return render_template("shipments/cost_buildup.html", s=s, d=data, groups=groups)
 
 
 @bp.route("/<int:shipment_id>/statement")

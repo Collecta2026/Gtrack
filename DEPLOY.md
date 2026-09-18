@@ -103,11 +103,13 @@ to do that to a non-SQLite database unless you say so explicitly. That guard is 
 purpose — read what it prints before you type the flag.
 
 If you want an empty system rather than the migrated spreadsheet, run
-`flask --app run init-db` instead, then create your first user through the shell.
+`flask --app run init-db` instead — it creates the tables with no data at all, not even
+the demo shipment history.
 
-**Change the demo passwords immediately.** Every seeded account uses `demo1234`. Sign in as
-`zak@scientificgate.test`, go to Administration → Users, and reset them — or delete the
-demo accounts entirely and create real ones.
+**There is nothing to change or delete before going live.** Seeding never creates any
+accounts — the first person to open the live URL is walked through a one-time setup
+screen to create the admin account themselves, choosing their own password. From there,
+Administration → Users creates everyone else.
 
 ---
 
