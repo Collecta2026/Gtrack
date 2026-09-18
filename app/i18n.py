@@ -1603,3 +1603,19 @@ TRANSLATIONS.update(_d([
     ("Bank Charges", "مصاريف بنكية"),
     ("Last-Mile Delivery", "التوصيل للميل الأخير"),
 ]))
+
+# ---- financial analysis report ----
+TRANSLATIONS.update(_d([
+    ("Financial analysis", "التحليل المالي"),
+    ("Total landed value", "إجمالي القيمة الواصلة"),
+    ("Every shipment, every cost element", "كل شحنة، وكل عنصر تكلفة"),
+    ("figures in", "الأرقام بعملة"),
+    ("shipments", "شحنات"),
+    ("No shipments in scope.", "لا توجد شحنات ضمن النطاق."),
+    ("Click a shipment to open its full Landed cost build-up. Every figure here is pulled "
+     "live from the cost lines, supplier invoices and freight quotations logged against "
+     "each shipment — nothing is entered here directly.",
+     "اضغط على شحنة لفتح تفصيل تكلفة الوصول الكامل الخاص بها. كل رقم هنا مأخوذ مباشرة من "
+     "بنود التكاليف وفواتير الموردين وعروض أسعار الشحن المسجَّلة على كل شحنة — لا يتم إدخال "
+     "أي شيء هنا مباشرة."),
+]))

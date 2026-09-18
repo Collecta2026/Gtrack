@@ -3,10 +3,10 @@ import secrets
 from functools import wraps
 from datetime import datetime
 
-from flask import Blueprint, render_template, redirect, url_for, request, flash, abort
+from flask import Blueprint, render_template, redirect, url_for, request, flash, abort, current_app
 from flask_login import login_user, logout_user, login_required, current_user
 
-from .models import db, User
+from .models import db, User, Role
 from .i18n import t
 
 bp = Blueprint("auth", __name__)
@@ -146,8 +146,56 @@ def visible_shipments(query):
 # Routes
 # --------------------------------------------------------------------------
 
+@bp.route("/setup", methods=["GET", "POST"])
+def setup():
+    """The very first screen anyone sees on a fresh install — there are no
+    accounts yet, so instead of a demo login, whoever opens the app creates
+    the one admin account themselves, with a password of their own choosing.
+    Only reachable while the database genuinely has no users; once that
+    first account exists, this route steps aside for the normal login."""
+    if User.query.count() > 0:
+        return redirect(url_for("auth.login"))
+
+    if request.method == "POST":
+        name = (request.form.get("name") or "").strip()
+        email = (request.form.get("email") or "").strip().lower()
+        password = request.form.get("password") or ""
+        confirm = request.form.get("confirm_password") or ""
+        cfo_role = Role.query.filter_by(code="cfo").first()
+
+        if not name:
+            flash(t("Enter your name."), "error")
+        elif not email:
+            flash(t("Enter an email address."), "error")
+        elif len(password) < 6:
+            flash(t("The password must be at least 6 characters."), "error")
+        elif password != confirm:
+            flash(t("The password and its confirmation don't match."), "error")
+        elif cfo_role is None:
+            # Shouldn't happen outside a broken install — the role matrix is
+            # seeded before the app is ever opened.
+            flash(t("Setup can't continue: the role matrix hasn't been seeded yet."), "error")
+        else:
+            admin = User(name=name, email=email, role_id=cfo_role.id, is_active_flag=True)
+            admin.set_password(password)
+            admin.must_change_password = False   # they just chose it themselves
+            db.session.add(admin)
+            db.session.commit()
+            current_app.config["_GTRACK_HAS_USERS"] = True
+            login_user(admin)
+            admin.last_login = datetime.utcnow()
+            db.session.commit()
+            flash(t("Welcome — your admin account is ready. Add the rest of your "
+                    "team from Admin -> Users whenever you're ready."), "success")
+            return redirect(url_for("dashboard.index"))
+
+    return render_template("setup.html")
+
+
 @bp.route("/login", methods=["GET", "POST"])
 def login():
+    if User.query.count() == 0:
+        return redirect(url_for("auth.setup"))
     if current_user.is_authenticated:
         return redirect(url_for("dashboard.index"))
 
@@ -193,6 +241,28 @@ def change_password():
             return redirect(url_for("dashboard.index"))
 
     return render_template("change_password.html")
+
+
+# Endpoints reachable before the first account exists — the setup screen itself
+# and the language toggle.
+_SETUP_ALLOWED_ENDPOINTS = {"auth.setup", "set_language"}
+
+
+@bp.before_app_request
+def _enforce_first_time_setup():
+    """Until the very first account is created, every request lands on the setup
+    screen instead of the normal login — there's nothing yet to log in with, so
+    a login form would just be a dead end. Cached on the app once an account
+    exists so this doesn't mean a COUNT query on every request forever."""
+    if current_app.config.get("_GTRACK_HAS_USERS"):
+        return
+    if User.query.count() > 0:
+        current_app.config["_GTRACK_HAS_USERS"] = True
+        return
+    endpoint = request.endpoint or ""
+    if endpoint in _SETUP_ALLOWED_ENDPOINTS or endpoint.startswith("static"):
+        return
+    return redirect(url_for("auth.setup"))
 
 
 # Endpoints reachable even while a password change is outstanding — signing out

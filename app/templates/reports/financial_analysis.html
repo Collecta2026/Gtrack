@@ -1,0 +1,88 @@
+{% extends "base.html" %}
+{% block heading %}{{ t("Financial analysis") }}{% endblock %}
+{% block crumb %}{{ t("Reports & KPIs") }}{% endblock %}
+
+{% block actions %}
+  <a class="btn ghost sm" href="{{ url_for('reports.financial_analysis_export', format='xlsx') }}">{{ t("Excel") }}</a>
+  <a class="btn ghost sm" href="{{ url_for('reports.financial_analysis_export', format='csv') }}">{{ t("CSV") }}</a>
+  <a class="btn ghost sm" href="{{ url_for('reports.financial_analysis_export', format='pdf') }}">{{ t("PDF") }}</a>
+{% endblock %}
+
+{% block content %}
+
+{% include "reports/_subnav.html" %}
+
+<div class="tiles">
+  <div class="tile">
+    <div class="lab">{{ t("Goods value") }}</div>
+    <div class="val">{{ totals.goods_base | money }}</div>
+    <div class="sub">{{ base_currency }}</div>
+  </div>
+  <div class="tile">
+    <div class="lab">{{ t("Total cost") }}</div>
+    <div class="val">{{ totals.cost_total | money }}</div>
+    <div class="sub">{{ base_currency }}</div>
+  </div>
+  <div class="tile">
+    <div class="lab">{{ t("Unpaid") }}</div>
+    <div class="val">{{ totals.unpaid_total | money }}</div>
+    <div class="sub">{{ base_currency }}</div>
+  </div>
+  <div class="tile">
+    <div class="lab">{{ t("Total landed value") }}</div>
+    <div class="val">{{ totals.landed_total | money }}</div>
+    <div class="sub">{{ base_currency }}</div>
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-head">
+    <h2>{{ t("Every shipment, every cost element") }}</h2>
+    <span class="tiny muted">{{ rows | length }} {{ t("shipments") }} · {{ t("figures in") }} {{ base_currency }}</span>
+  </div>
+  {% if rows %}
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>{{ t("Shipment") }}</th>
+          <th>{{ t("Stage") }}</th>
+          <th class="num">{{ t("Goods value") }}</th>
+          {% for label in bucket_labels %}<th class="num">{{ label }}</th>{% endfor %}
+          <th class="num">{{ t("Total cost") }}</th>
+          <th class="num">{{ t("Unpaid") }}</th>
+          <th class="num"><strong>{{ t("Total landed cost") }}</strong></th>
+        </tr>
+      </thead>
+      <tbody>
+      {% for r in rows %}
+        <tr>
+          <td class="small"><a href="{{ url_for('shipments.cost_buildup', shipment_id=r.shipment.id) }}">{{ r.shipment.reference_no }}</a></td>
+          <td class="small">{{ r.shipment.stage_label }}</td>
+          <td class="num small">{{ r.goods_base | money }}</td>
+          {% for amount in r.buckets %}<td class="num small">{{ amount | money if amount else '—' }}</td>{% endfor %}
+          <td class="num small">{{ r.cost_total | money }}</td>
+          <td class="num small">{{ r.unpaid_total | money if r.unpaid_total else '—' }}</td>
+          <td class="num small"><strong>{{ r.landed_total | money }}</strong></td>
+        </tr>
+      {% endfor %}
+      </tbody>
+      <tfoot>
+        <tr class="buildup-total">
+          <td colspan="2">{{ t("Total") }}</td>
+          <td class="num">{{ totals.goods_base | money }}</td>
+          {% for amount in totals.buckets %}<td class="num">{{ amount | money }}</td>{% endfor %}
+          <td class="num">{{ totals.cost_total | money }}</td>
+          <td class="num">{{ totals.unpaid_total | money }}</td>
+          <td class="num">{{ totals.landed_total | money }}</td>
+        </tr>
+      </tfoot>
+    </table>
+  </div>
+  <div class="card-body tight">
+    <div class="tiny muted">{{ t("Click a shipment to open its full Landed cost build-up. Every figure here is pulled live from the cost lines, supplier invoices and freight quotations logged against each shipment — nothing is entered here directly.") }}</div>
+  </div>
+  {% else %}<div class="empty">{{ t("No shipments in scope.") }}</div>{% endif %}
+</div>
+
+{% endblock %}
