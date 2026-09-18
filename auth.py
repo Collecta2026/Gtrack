@@ -181,7 +181,6 @@ def setup():
             admin.must_change_password = False   # they just chose it themselves
             db.session.add(admin)
             db.session.commit()
-            current_app.config["_GTRACK_HAS_USERS"] = True
             login_user(admin)
             admin.last_login = datetime.utcnow()
             db.session.commit()
@@ -252,12 +251,16 @@ _SETUP_ALLOWED_ENDPOINTS = {"auth.setup", "set_language"}
 def _enforce_first_time_setup():
     """Until the very first account is created, every request lands on the setup
     screen instead of the normal login — there's nothing yet to log in with, so
-    a login form would just be a dead end. Cached on the app once an account
-    exists so this doesn't mean a COUNT query on every request forever."""
-    if current_app.config.get("_GTRACK_HAS_USERS"):
-        return
+    a login form would just be a dead end.
+
+    This deliberately asks the database every time rather than caching the
+    answer. An earlier version cached "accounts exist" on the app to save a
+    COUNT per request, which was a false economy: gunicorn runs a worker per
+    process, each with its own config, so clearing the accounts out of the
+    database left every running worker still believing they existed — the
+    setup screen never appeared and only a restart fixed it. COUNT on a table
+    with a handful of rows costs nothing; being wrong costs an afternoon."""
     if User.query.count() > 0:
-        current_app.config["_GTRACK_HAS_USERS"] = True
         return
     endpoint = request.endpoint or ""
     if endpoint in _SETUP_ALLOWED_ENDPOINTS or endpoint.startswith("static"):
