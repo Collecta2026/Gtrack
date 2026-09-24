@@ -13,50 +13,73 @@
 
 {% block content %}
 
+{# Headline figures — the shape of the business. Every tile is a link through to
+   the list behind the number, so a figure is never a dead end. #}
 <div class="tiles">
-  <div class="tile">
+  <a class="tile" href="{{ url_for('shipments.index', status='delivered') }}">
+    <div class="lab">{{ t("Delivered shipments") }}</div>
+    <div class="val">{{ stats.total_delivered }}</div>
+    <div class="sub">{{ t("received into the warehouse") }}</div>
+  </a>
+  <a class="tile" href="{{ url_for('shipments.index', status='in_transit') }}">
+    <div class="lab">{{ t("Shipments in transit") }}</div>
+    <div class="val">{{ stats.total_in_transit }}</div>
+    <div class="sub">{{ t("departed, not yet received") }}</div>
+  </a>
+  {% if current_user.can('view_all') %}
+  <a class="tile" href="{{ url_for('shipments.index', status='all') }}">
+    <div class="lab">{{ t("Total invoice value") }}</div>
+    <div class="val">{{ stats.total_invoice_value | money }}</div>
+    <div class="sub">{{ t("every shipment on record, {cur}", cur=base_currency) }}</div>
+  </a>
+  {% endif %}
+</div>
+
+{# Exception alerts — what needs attention. #}
+<div class="tiles">
+  <a class="tile" href="{{ url_for('shipments.index', status='open') }}">
     <div class="lab">{{ t("Open shipments") }}</div>
     <div class="val">{{ stats.open_shipments }}</div>
     <div class="sub">{{ t("in the pipeline now") }}</div>
-  </div>
-  <div class="tile {{ 'warn' if stats.delayed }}">
+  </a>
+  <a class="tile {{ 'warn' if stats.delayed }}" href="{{ url_for('shipments.index', status='delayed') }}">
     <div class="lab">{{ t("Delayed") }}</div>
     <div class="val">{{ stats.delayed }}</div>
     <div class="sub">{{ t("past ETA, not arrived") }}</div>
-  </div>
-  <div class="tile amber">
+  </a>
+  <a class="tile amber" href="{{ url_for('shipments.index', status='arriving') }}">
     <div class="lab">{{ t("Arriving ≤ 21 days") }}</div>
     <div class="val">{{ stats.arriving_soon }}</div>
     <div class="sub">{{ t("prepare customers") }}</div>
-  </div>
-  <div class="tile">
+  </a>
+  <a class="tile" href="{{ url_for('assets.index', allocation='unallocated') }}">
     <div class="lab">{{ t("Machines unallocated") }}</div>
     <div class="val">{{ stats.unallocated_units }}</div>
     <div class="sub">{{ t("no customer assigned") }}</div>
-  </div>
-  <div class="tile">
+  </a>
+  <a class="tile" href="{{ url_for('assets.allocations') }}">
     <div class="lab">{{ t("Awaiting installation") }}</div>
     <div class="val">{{ stats.awaiting_install }}</div>
     <div class="sub">{{ t("allocated, not installed") }}</div>
-  </div>
+  </a>
   {% if current_user.can('view_all') %}
-  <div class="tile">
+  <a class="tile" href="{{ url_for('shipments.index', status='open') }}">
     <div class="lab">{{ t("Goods in transit") }}</div>
     <div class="val">{{ stats.value_in_transit | money }}</div>
     <div class="sub">{{ t("declared value, {cur}", cur=base_currency) }}</div>
-  </div>
-  <div class="tile {{ 'warn' if stats.unpaid_costs }}">
+  </a>
+  <a class="tile {{ 'warn' if stats.unpaid_costs }}" href="{{ url_for('finance.costs', status='unpaid') }}">
     <div class="lab">{{ t("Unpaid costs") }}</div>
     <div class="val">{{ stats.unpaid_costs | money }}</div>
     <div class="sub">{{ t("{cur} equivalent", cur=base_currency) }}</div>
-  </div>
-  <div class="tile {{ 'warn' if stats.overdue_pos }}">
+  </a>
+  <a class="tile {{ 'warn' if stats.overdue_pos }}" href="{{ url_for('purchase_orders.index', status='open') }}">
     <div class="lab">{{ t("Open POs") }}</div>
     <div class="val">{{ stats.open_pos }}</div>
     <div class="sub">{{ t("{n} past ready date", n=stats.overdue_pos) }}</div>
-  </div>
+  </a>
   {% if stats.hub_lines %}
-  <a class="tile" href="{{ url_for('assets.hub_stock') }}" style="display:block;color:inherit;text-decoration:none">
+  <a class="tile" href="{{ url_for('assets.hub_stock') }}">
     <div class="lab">{{ t("Held at the fulfilment centre") }}</div>
     <div class="val">{{ stats.hub_value | money }}</div>
     <div class="sub">
@@ -66,11 +89,11 @@
   </a>
   {% endif %}
   {% if stats.cut_off_risk %}
-  <div class="tile warn">
+  <a class="tile warn" href="{{ url_for('shipments.index', status='cut_off') }}">
     <div class="lab">{{ t("Cut-off missed") }}</div>
     <div class="val">{{ stats.cut_off_risk }}</div>
     <div class="sub">{{ t("not departed past the cargo cut-off") }}</div>
-  </div>
+  </a>
   {% endif %}
   {% endif %}
 </div>

@@ -1619,3 +1619,37 @@ TRANSLATIONS.update(_d([
      "بنود التكاليف وفواتير الموردين وعروض أسعار الشحن المسجَّلة على كل شحنة — لا يتم إدخال "
      "أي شيء هنا مباشرة."),
 ]))
+
+# ---- feedback release: figures, progress view, filters and exports ----
+TRANSLATIONS.update(_d([
+    ('Stock', 'المخزون'),
+    ('Stage progress', 'تقدّم المراحل'),
+    ('Board view', 'عرض اللوحة'),
+    ('Delivered shipments', 'الشحنات المستلمة'),
+    ('received into the warehouse', 'تم استلامها في المخزن'),
+    ('Shipments in transit', 'شحنات في الطريق'),
+    ('departed, not yet received', 'غادرت ولم تُستلم بعد'),
+    ('Total invoice value', 'إجمالي قيمة الفواتير'),
+    ('every shipment on record, {cur}', 'كل الشحنات المسجَّلة، {cur}'),
+    ('Preparing', 'قيد التحضير'),
+    ('In Transit', 'في الطريق'),
+    ('Delivered', 'تم الاستلام'),
+    ('Forwarder', 'وكيل الشحن'),
+    ('Qty', 'الكمية'),
+    ('Model', 'الموديل'),
+    ('Type', 'النوع'),
+    ('Allocation', 'التخصيص'),
+    ('Unallocated', 'غير مخصص'),
+    ('Allocated', 'مخصص'),
+    ('completed, current and outstanding stages', 'المراحل المكتملة والحالية والمتبقية'),
+    ('stages done', 'مراحل مكتملة'),
+    ('in progress', 'جارٍ التنفيذ'),
+    ('done', 'مكتمل'),
+    ('outstanding', 'متبقٍ'),
+    ('delayed', 'متأخرة'),
+    ('Reference, brand, description…', 'المرجع أو العلامة أو الوصف…'),
+    ('No shipments match these filters.', 'لا توجد شحنات مطابقة لهذه المرشحات.'),
+    ('Apply', 'تطبيق'),
+    ('Export everything (Excel)', 'تصدير كل البيانات (إكسل)'),
+    ('All master data', 'كل البيانات الأساسية'),
+]))

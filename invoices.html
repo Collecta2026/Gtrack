@@ -13,7 +13,7 @@
   <div class="table-wrap">
     <table>
       <thead><tr><th>{{ t("Invoice no") }}</th><th>{{ t("Date") }}</th><th>{{ t("Purchase order") }}</th><th>{{ t("Shipment") }}</th>
-        <th class="num">{{ t("Value") }}</th><th>{{ t("Status") }}</th></tr></thead>
+        <th class="num">{{ t("Qty") }}</th><th class="num">{{ t("Value") }}</th><th>{{ t("Status") }}</th></tr></thead>
       <tbody>
       {% for i in invoices %}
         <tr>
@@ -25,6 +25,7 @@
           <td class="small">
             {% if i.shipment %}<a href="{{ url_for('shipments.detail', shipment_id=i.shipment.id) }}">{{ i.shipment.reference_no }}</a>{% else %}—{% endif %}
           </td>
+          <td class="num small">{{ i.quantity | money if i.quantity else '—' }}</td>
           <td class="num small">{{ i.invoice_value | money(i.currency) }}</td>
           <td><span class="pill {{ 'green' if i.payment_status == 'paid' else 'amber' if i.payment_status == 'partial' else 'red' }}">{{ i.payment_status_label }}</span></td>
         </tr>

@@ -265,6 +265,20 @@ translation later is a one-line change in `app/i18n.py`.
 
 ## What's new in this build
 
+**Two deployment bugs found and fixed by testing the real thing.** Both only ever
+appeared on a live PostgreSQL deployment, never in local testing, which is why they
+survived as long as they did. First: on a brand-new empty database the container's own
+start-up command (`seed.py --keep`) counted shipments before the tables existed —
+PostgreSQL aborts the entire transaction when a statement fails, and catching the Python
+error doesn't undo that, so every later write failed and the app never came up. SQLite
+shrugs this off, hence the clean local runs. Second: the first-run check cached "accounts
+exist" in memory to save a lookup per request, but gunicorn runs a worker per process with
+its own memory, so clearing the accounts left each worker still believing they were there —
+the setup screen never appeared and the same URL gave different answers depending on which
+worker replied. The cache is gone; a count on a table this size costs nothing. Both paths
+are now tested against real PostgreSQL through real gunicorn workers, not just the test
+harness.
+
 **No pre-loaded accounts — you create the admin yourself, on first run** — a fresh
 database has zero accounts. The first person to open Gtrack is walked through a one-time
 setup screen instead of a login form: name, email, and a password of your own choosing —

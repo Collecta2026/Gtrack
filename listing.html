@@ -3,6 +3,8 @@
 {% block crumb %}{{ records | length }} {{ t("record(s)") }}{% endblock %}
 
 {% block actions %}
+  <a class="btn ghost sm" href="{{ url_for('masters.listing', entity=entity, export='xlsx') }}">{{ t("Excel") }}</a>
+  <a class="btn ghost sm" href="{{ url_for('masters.listing', entity=entity, export='csv') }}">{{ t("CSV") }}</a>
   <a class="btn ghost sm" href="{{ url_for('masters.index') }}">{{ t("All master data") }}</a>
 {% endblock %}
 

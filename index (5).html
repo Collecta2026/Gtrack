@@ -2,6 +2,10 @@
 {% block heading %}{{ t("Master data") }}{% endblock %}
 {% block crumb %}{{ t("Clean, de-duplicated reference records") }}{% endblock %}
 
+{% block actions %}
+  <a class="btn sm" href="{{ url_for('masters.export_all') }}">{{ t("Export everything (Excel)") }}</a>
+{% endblock %}
+
 {% block content %}
 <div class="tiles">
   {% for key, spec in registry.items() %}

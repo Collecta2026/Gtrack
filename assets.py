@@ -5,7 +5,7 @@ from flask import (Blueprint, render_template, request, redirect, url_for, flash
 from flask_login import login_required, current_user
 
 from ..models import (db, Asset, Allocation, ShipmentItem, Shipment, Customer,
-                      Brand, ASSET_STATUSES, Stage, to_base)
+                      Brand, ASSET_STATUSES, ITEM_CATEGORIES, Stage, to_base)
 from ..auth import permission_required, any_permission
 from ..exports import export_response
 
@@ -19,6 +19,8 @@ def index():
     search = (request.args.get("q") or "").strip()
     status = request.args.get("status") or ""
     brand_id = request.args.get("brand", type=int)
+    category = request.args.get("category") or ""
+    allocation = request.args.get("allocation") or ""
 
     assets = Asset.query.all()
 
@@ -32,6 +34,12 @@ def index():
         assets = [a for a in assets if a.status == status]
     if brand_id:
         assets = [a for a in assets if a.brand and a.brand.id == brand_id]
+    if category:
+        assets = [a for a in assets if a.item and a.item.category == category]
+    if allocation == "unallocated":
+        assets = [a for a in assets if not a.allocation]
+    elif allocation == "allocated":
+        assets = [a for a in assets if a.allocation]
 
     # sales users only see units allocated to their own customers
     if not current_user.can("view_all"):
@@ -54,8 +62,10 @@ def index():
 
     return render_template("assets/index.html", assets=assets,
                            statuses=ASSET_STATUSES,
+                           categories=ITEM_CATEGORIES,
                            brands=Brand.query.order_by(Brand.brand_name).all(),
-                           filters=dict(q=search, status=status, brand=brand_id))
+                           filters=dict(q=search, status=status, brand=brand_id,
+                                        category=category, allocation=allocation))
 
 
 @bp.route("/<int:asset_id>")

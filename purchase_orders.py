@@ -34,9 +34,15 @@ def _to_float(value, default=0.0):
 def index():
     status = request.args.get("status") or ""
     q = PurchaseOrder.query
-    if status:
+    if status == "open":
+        # What the dashboard counts as open — raised with the supplier but not yet
+        # fulfilled or cancelled. Kept in step with dashboard.py deliberately.
+        q = q.filter(PurchaseOrder.status.in_(["sent", "confirmed", "part_shipped"]))
+    elif status:
         q = q.filter(PurchaseOrder.status == status)
     pos = q.order_by(PurchaseOrder.id.desc()).all()
+    if status == "overdue":
+        pos = [p for p in pos if p.is_overdue]
 
     fmt = request.args.get("export")
     if fmt:

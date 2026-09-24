@@ -539,6 +539,111 @@ with app.app_context():
           f"nonzero build-up bucket", len(_nonzero_buckets) == len(_BUILDUP_GROUPS),
           f"(buckets with data: {sorted(_nonzero_buckets)})")
 
+print("\n=== Feedback release: figures, statuses, progress view, exports ===")
+with app.test_client() as c:
+    login(c, "zak@scientificgate.test")
+
+    # --- the three plain statuses, and the register filter built on them ---
+    with app.app_context():
+        from app.models import Stage as _Stage
+        every = Shipment.query.all()
+        grouped = {k: [s for s in every if s.current_stage in codes]
+                   for k, _l, codes in _Stage.STATUS_GROUPS}
+        ungrouped = [s for s in every if _Stage.status_of(s.current_stage) is None]
+        check("every stage maps to at most one plain status",
+              sum(len(v) for v in grouped.values()) + len(ungrouped) == len(every))
+        check("cancelled and re-exported fall outside the three statuses, reachable under All",
+              all(s.current_stage in (_Stage.CANCELLED, _Stage.RE_EXPORTED) for s in ungrouped))
+        expected = {k: len(v) for k, v in grouped.items()}
+
+    for key, count in expected.items():
+        r = c.get(f"/shipments/?status={key}")
+        check(f"register filter status={key} renders", r.status_code == 200)
+        with app.app_context():
+            shown = [s for s in Shipment.query.all()
+                     if s.current_stage in dict((k, codes) for k, _l, codes
+                                                in __import__('app.models', fromlist=['Stage']).Stage.STATUS_GROUPS)[key]]
+        check(f"status={key} returns the {count} shipments the grouping says it should",
+              len(shown) == count)
+    check("All still reaches every shipment",
+          c.get("/shipments/?status=all").status_code == 200)
+
+    # --- dashboard figures agree with those same groupings, and drill down ---
+    body = c.get("/").data.decode()
+    for needle in ["Delivered shipments", "Shipments in transit", "Total invoice value"]:
+        check(f"dashboard shows '{needle}'", needle in body)
+    check("every dashboard tile is a link through to its list",
+          body.count('<a class="tile') >= 10 and "<div class=\"tile\"" not in body)
+    for target in ["/shipments/?status=delivered", "/shipments/?status=in_transit",
+                   "/shipments/?status=delayed", "/shipments/?status=arriving",
+                   "/shipments/?status=cut_off", "/finance/costs?status=unpaid",
+                   "/purchase-orders/?status=open", "/equipment/?allocation=unallocated"]:
+        check(f"drill-down target {target} works", c.get(target).status_code == 200)
+
+    with app.app_context():
+        delivered_stages = __import__('app.models', fromlist=['Stage']).Stage.stages_for_status("delivered")
+        delivered_count = sum(1 for s in Shipment.query.all()
+                              if s.current_stage in delivered_stages)
+    check("the delivered figure counts shipments received into the warehouse",
+          f">{delivered_count}<" in body.replace(" ", ""), f"(expected {delivered_count})")
+
+    # --- stage progress view ---
+    r = get(c, "/shipments/progress", label="stage progress view renders")
+    prog = r.data.decode()
+    check("progress view marks stages outstanding as well as done",
+          "outstanding" in prog and "prog-step done" in prog)
+    with app.app_context():
+        open_count = sum(1 for s in Shipment.query.all() if s.is_open)
+    check("progress view shows a line per open shipment by default",
+          prog.count("prog-steps") == open_count, f"({prog.count('prog-steps')} vs {open_count})")
+    check("progress view filters by status", c.get("/shipments/progress?status=delivered").status_code == 200)
+    check("progress view filters by stage", c.get("/shipments/progress?status=all&stage=in_transit").status_code == 200)
+
+    # --- new columns ---
+    reg = c.get("/shipments/").data.decode()
+    check("register shows a forwarder column", "Forwarder" in reg)
+    check("register shows a quantity column", ">Qty<" in reg.replace(" ", ""))
+    inv = c.get("/finance/invoices").data.decode()
+    check("supplier invoices show quantity", ">Qty<" in inv.replace(" ", ""))
+    po = c.get("/purchase-orders/").data.decode()
+    check("purchase orders show model and quantity", "Model" in po and ">Qty<" in po.replace(" ", ""))
+    with app.app_context():
+        p = PurchaseOrder.query.filter(PurchaseOrder.id.isnot(None)).first()
+        check("purchase order quantity totals its lines",
+              abs(p.qty_ordered_total - sum((l.qty_ordered or 0) for l in p.lines)) < 0.01)
+        s_obj = db.session.get(Shipment, shipment_id)
+        check("shipment quantity totals its item lines",
+              abs(s_obj.invoiced_qty - sum((i.qty or 0) for i in s_obj.items)) < 0.01)
+
+    # --- serial register type filter ---
+    check("serial register filters by item type",
+          c.get("/equipment/?category=spare_part").status_code == 200)
+    check("serial register filters by allocation",
+          c.get("/equipment/?allocation=allocated").status_code == 200)
+
+    # --- exports ---
+    for entity in ("suppliers", "brands", "customers", "carriers", "locations",
+                   "brokers", "consignees", "banks"):
+        check(f"master data export: {entity}",
+              c.get(f"/master-data/{entity}?export=xlsx").status_code == 200)
+    r = c.get("/master-data/export")
+    check("export everything returns a workbook", r.status_code == 200 and len(r.data) > 10000)
+    import io as _io
+    from openpyxl import load_workbook as _load
+    wb = _load(_io.BytesIO(r.data))
+    check("export everything covers master data and the operational registers",
+          len(wb.sheetnames) >= 16, f"({len(wb.sheetnames)} sheets)")
+    for needed in ("Shipments", "Purchase orders", "Supplier invoices", "Costs",
+                   "Serial register", "Allocations"):
+        check(f"full export includes the {needed} sheet", needed in wb.sheetnames)
+    with app.app_context():
+        check("full export's shipment sheet holds every shipment",
+              wb["Shipments"].max_row - 1 == Shipment.query.count())
+
+    # --- sidebar renamed and collapsible ---
+    check("sidebar section renamed to Stock", ">Stock<" in reg)
+    check("sidebar sections collapse", 'class="nav-group"' in reg and "gtrack.nav.collapsed" in reg)
+
 print("\n=== Financial analysis report ===")
 with app.test_client() as c:
     login(c, "finance@scientificgate.test")

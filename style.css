@@ -21,7 +21,18 @@ h3{font-size:.97rem;color:var(--ink)}
 .brand .co{font-weight:700;color:#fff;font-size:.95rem;letter-spacing:.02em}
 .brand .sub{font-size:.73rem;color:#9db2cb;margin-top:.15rem}
 .nav{padding:.6rem 0;flex:1}
-.nav .group{font-size:.66rem;text-transform:uppercase;letter-spacing:.09em;color:#7f9ab8;padding:.85rem 1.15rem .3rem}
+/* Main sections read as headings — bolder and larger than the items beneath —
+   and each one collapses, so a long sidebar can be folded down to what you use. */
+.nav .group{display:flex;align-items:center;justify-content:space-between;gap:.5rem;width:100%;
+  background:none;border:0;cursor:pointer;text-align:left;font-family:inherit;
+  font-size:.79rem;font-weight:700;text-transform:uppercase;letter-spacing:.07em;
+  color:#a9c0d8;padding:.9rem 1.15rem .35rem}
+.nav .group:hover{color:#fff}
+.nav .chev{border:solid currentColor;border-width:0 1.5px 1.5px 0;padding:2.5px;
+  transform:rotate(45deg);transition:transform .15s;opacity:.75;margin-top:-3px}
+.nav-group.collapsed .chev{transform:rotate(-45deg)}
+.nav-group.collapsed .group-items{display:none}
+[dir="rtl"] .nav .group{text-align:right}
 .nav a{display:block;padding:.44rem 1.15rem;color:#dbe4ee;font-size:.855rem;border-left:3px solid transparent}
 .nav a:hover{background:rgba(255,255,255,.07);text-decoration:none}
 .nav a.active{background:rgba(255,255,255,.1);border-left-color:var(--amber);color:#fff;font-weight:600}
@@ -53,11 +64,21 @@ tbody tr:last-child td{border-bottom:none}
 tbody tr:hover{background:#f8fafc}
 .num{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
 .nowrap{white-space:nowrap}
-.table-wrap{overflow-x:auto}
+/* Wide tables scroll sideways. The scrollbar is pinned to the bottom of the
+   viewport rather than the bottom of the table, so on a long register you can
+   reach it without scrolling to the end of the page first. */
+.table-wrap{overflow-x:auto;max-height:calc(100vh - 210px);overflow-y:auto}
+.table-wrap thead th{position:sticky;top:0;z-index:2}
+@media print{.table-wrap{max-height:none;overflow:visible}}
 
 /* ---------- stat tiles ---------- */
 .tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(158px,1fr));gap:.8rem;margin-bottom:1.15rem}
 .tile{background:#fff;border:1px solid var(--line);border-radius:var(--radius);padding:.85rem .95rem;box-shadow:var(--shadow)}
+/* Every figure is a link through to the list behind it. Anchors have to be told
+   to look like the plain tiles they replaced, and to show they can be clicked. */
+a.tile{display:block;color:inherit;text-decoration:none;transition:border-color .12s,box-shadow .12s,transform .12s}
+a.tile:hover{border-color:var(--navy);box-shadow:0 2px 10px rgba(31,58,95,.14);transform:translateY(-1px)}
+a.tile:hover .lab{color:var(--navy)}
 .tile .lab{font-size:.7rem;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin-bottom:.3rem}
 .tile .val{font-size:1.5rem;font-weight:700;color:var(--navy);line-height:1.1;font-variant-numeric:tabular-nums}
 .tile .sub{font-size:.74rem;color:var(--muted);margin-top:.2rem}
@@ -271,3 +292,29 @@ details.inline-add[open] summary::before{content:"−"}
 .langswitch-dark a{color:#9db2cb}
 .langswitch-dark a:hover{background:rgba(255,255,255,.08)}
 .langswitch-dark a.on{background:rgba(255,255,255,.16);color:#fff}
+
+/* ---- Stage progress: one line per shipment, every stage marked ------------
+   Reads left to right as a track: solid for stages completed, ringed for the
+   one in progress, hollow for what is still outstanding. Wraps on narrow
+   screens rather than forcing a sideways scroll. */
+.prog-card{padding:.85rem 1rem;margin-bottom:.7rem}
+.prog-head{display:flex;justify-content:space-between;align-items:flex-start;gap:1rem;flex-wrap:wrap;margin-bottom:.7rem}
+.prog-ref{font-weight:700;color:var(--navy);margin-right:.5rem}
+.prog-meta{display:flex;align-items:center;gap:.45rem;flex-wrap:wrap}
+.prog-steps{list-style:none;margin:0;padding:0;display:flex;flex-wrap:wrap;gap:.1rem}
+.prog-step{position:relative;flex:1 1 5.4rem;min-width:5.4rem;padding:0 .2rem;text-align:center}
+/* the connecting track */
+.prog-step::before{content:"";position:absolute;top:6px;left:0;right:50%;height:2px;background:var(--line)}
+.prog-step::after{content:"";position:absolute;top:6px;left:50%;right:0;height:2px;background:var(--line)}
+.prog-step:first-child::before,.prog-step:last-child::after{display:none}
+.prog-step.done::before,.prog-step.done::after,.prog-step.current::before{background:var(--navy)}
+.prog-dot{position:relative;z-index:1;display:block;width:14px;height:14px;margin:0 auto .3rem;
+  border-radius:50%;background:#fff;border:2px solid var(--line)}
+.prog-step.done .prog-dot{background:var(--navy);border-color:var(--navy)}
+.prog-step.current .prog-dot{background:#fff;border-color:var(--amber);box-shadow:0 0 0 3px rgba(214,158,46,.25)}
+.prog-label{display:block;font-size:.635rem;line-height:1.25;color:var(--muted)}
+.prog-step.done .prog-label{color:var(--navy)}
+.prog-step.current .prog-label{color:var(--navy);font-weight:700}
+.prog-when{display:block;font-size:.62rem;color:var(--muted);margin-top:.12rem}
+.prog-step.current .prog-when{color:var(--amber);font-weight:600}
+[dir="rtl"] .prog-steps{flex-direction:row-reverse}

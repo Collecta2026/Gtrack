@@ -25,6 +25,23 @@
         </select>
       </div>
       <div class="field">
+        <label>{{ t("Type") }}</label>
+        <select name="category">
+          <option value="">{{ t("Any") }}</option>
+          {% for code, label in categories %}
+            <option value="{{ code }}" {{ 'selected' if filters.category == code }}>{{ t(label) }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="field">
+        <label>{{ t("Allocation") }}</label>
+        <select name="allocation">
+          <option value="">{{ t("Any") }}</option>
+          <option value="unallocated" {{ 'selected' if filters.allocation == 'unallocated' }}>{{ t("Unallocated") }}</option>
+          <option value="allocated" {{ 'selected' if filters.allocation == 'allocated' }}>{{ t("Allocated") }}</option>
+        </select>
+      </div>
+      <div class="field">
         <label>{{ t("Brand") }}</label>
         <select name="brand">
           <option value="">Any</option>

@@ -48,6 +48,16 @@ def index():
     value_in_transit = sum(s.total_value_base for s in open_shipments)
     unpaid_costs = sum(s.unpaid_cost for s in shipments)
 
+    # Headline figures, alongside the exception alerts rather than instead of them.
+    # The three plain statuses come from Stage.STATUS_GROUPS, the same map the
+    # register's status filter uses, so a figure here and a filtered list there
+    # can never disagree. Delivered means received into the warehouse.
+    delivered_stages = Stage.stages_for_status("delivered")
+    transit_stages = Stage.stages_for_status("in_transit")
+    total_delivered = sum(1 for s in shipments if s.current_stage in delivered_stages)
+    total_in_transit = sum(1 for s in shipments if s.current_stage in transit_stages)
+    total_invoice_value = sum(s.total_value_base for s in shipments)
+
     # Stock sitting at the free-zone fulfilment centre. It is neither in transit nor
     # in the Cairo warehouse, so without this it is capital nobody is looking at.
     hub_value, hub_lines, hub_oldest = 0.0, 0, None
@@ -77,6 +87,9 @@ def index():
     overdue_pos = [p for p in open_pos if p.is_overdue]
 
     stats = dict(
+        total_delivered=total_delivered,
+        total_in_transit=total_in_transit,
+        total_invoice_value=total_invoice_value,
         open_shipments=len(open_shipments),
         delayed=len(delayed),
         arriving_soon=len(arriving_soon),

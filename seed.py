@@ -1055,6 +1055,15 @@ def main():
                 already = Shipment.query.count()
             except Exception:
                 already = 0          # tables not created yet
+                # PostgreSQL aborts the whole transaction when a statement fails,
+                # and catching the Python exception does not undo that — every
+                # later statement on this session would come back "current
+                # transaction is aborted". On a brand-new database (no tables to
+                # count) that took out the very first flush of the seed, so the
+                # container's own "seed on first run" start-up command failed and
+                # the app never came up. SQLite is forgiving here, which is why it
+                # only ever showed on a real deployment. Roll back and carry on.
+                db.session.rollback()
             if already:
                 print("Database already populated — nothing to do (--keep).")
                 return

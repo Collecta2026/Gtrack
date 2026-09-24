@@ -120,6 +120,35 @@ class Stage:
     # Installation handover is a post-receipt step tracked through Allocation.
     TERMINAL = {WAREHOUSE, INSTALLATION, CANCELLED, RE_EXPORTED}
 
+    # The twelve stages rolled up into the three plain statuses the business uses
+    # day to day. Defined once, here, so the register's status filter and the
+    # dashboard's headline figures can never drift apart — they read the same map.
+    # "Delivered" means received into the warehouse; installation handover sits
+    # beyond that and is still, by definition, delivered.
+    STATUS_GROUPS = [
+        ("preparing", "Preparing", [PO_RAISED, ORDER_CONFIRMED, PREPARING]),
+        ("in_transit", "In Transit", [DEPARTED, IN_TRANSIT, ARRIVED, CUSTOMS_FILING,
+                                      CLEARANCE, CLEARED, OUT_FOR_DELIVERY]),
+        ("delivered", "Delivered", [WAREHOUSE, INSTALLATION]),
+    ]
+
+    @classmethod
+    def stages_for_status(cls, status):
+        """The stage codes behind one of the three plain statuses, or None."""
+        for key, _label, codes in cls.STATUS_GROUPS:
+            if key == status:
+                return codes
+        return None
+
+    @classmethod
+    def status_of(cls, code):
+        """Which of the three plain statuses a stage rolls up into. Cancelled and
+        re-exported belong to none of them — they are reachable under "All"."""
+        for key, _label, codes in cls.STATUS_GROUPS:
+            if code in codes:
+                return key
+        return None
+
     @classmethod
     def label(cls, code):
         from .i18n import t
@@ -502,6 +531,23 @@ class PurchaseOrder(db.Model):
         return sum((l.line_value or 0) for l in self.lines)
 
     @property
+    def qty_ordered_total(self):
+        """Units on the order, across all its lines."""
+        return sum((l.qty_ordered or 0) for l in self.lines)
+
+    @property
+    def models_summary(self):
+        """The models on the order, for the list view. One order usually covers
+        one or two models; beyond that the count is more use than the names."""
+        models = [l.model_no for l in self.lines if l.model_no]
+        seen = list(dict.fromkeys(models))
+        if not seen:
+            return None
+        if len(seen) <= 2:
+            return ", ".join(seen)
+        return f"{seen[0]}, {seen[1]} +{len(seen) - 2}"
+
+    @property
     def status_label(self):
         from .i18n import t
         return t(dict(PO_STATUSES).get(self.status, self.status))
@@ -562,6 +608,12 @@ class SupplierInvoice(db.Model):
     def payment_status_label(self):
         from .i18n import t
         return t(dict(PAYMENT_STATUSES).get(self.payment_status, self.payment_status))
+
+    @property
+    def quantity(self):
+        """Units on this invoice. The shipment's item lines are entered from the
+        supplier's invoice, so their quantities are the invoiced quantity."""
+        return self.shipment.invoiced_qty if self.shipment else None
 
 
 # The cost elements a freight forwarder's quote is actually made of. Column name
@@ -786,6 +838,12 @@ class Shipment(db.Model):
     @property
     def total_value(self):
         return sum((i.line_value or 0) for i in self.items)
+
+    @property
+    def invoiced_qty(self):
+        """Total units on the shipment, as stated on the supplier invoice — the
+        item lines are entered from that invoice, so their quantities are it."""
+        return sum((i.qty or 0) for i in self.items)
 
     @property
     def total_value_base(self):

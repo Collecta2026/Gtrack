@@ -24,10 +24,13 @@
       <div class="field">
         <label>{{ t("Status") }}</label>
         <select name="status">
-          <option value="all" {{ 'selected' if filters.status == 'all' }}>All</option>
-          <option value="open" {{ 'selected' if filters.status == 'open' }}>Open</option>
-          <option value="closed" {{ 'selected' if filters.status == 'closed' }}>Closed</option>
-          <option value="delayed" {{ 'selected' if filters.status == 'delayed' }}>Delayed</option>
+          <option value="all" {{ 'selected' if filters.status == 'all' }}>{{ t("All") }}</option>
+          {% for key, label, codes in status_groups %}
+            <option value="{{ key }}" {{ 'selected' if filters.status == key }}>{{ t(label) }}</option>
+          {% endfor %}
+          <option value="delayed" {{ 'selected' if filters.status == 'delayed' }}>{{ t("Delayed") }}</option>
+          <option value="open" {{ 'selected' if filters.status == 'open' }}>{{ t("Open") }}</option>
+          <option value="closed" {{ 'selected' if filters.status == 'closed' }}>{{ t("Closed") }}</option>
         </select>
       </div>
       <div class="field">
@@ -90,7 +93,9 @@
       <thead>
         <tr>
           <th>{{ t("Reference") }}</th><th>{{ t("Stage") }}</th><th>{{ t("Brand") }}</th><th>{{ t("Supplier") }}</th>
-          <th>{{ t("Route") }}</th><th>{{ t("Route type") }}</th><th>{{ t("Mode") }}</th><th>{{ t("ETA") }}</th><th class="num">{{ t("In stage") }}</th>
+          <th>{{ t("Route") }}</th><th>{{ t("Route type") }}</th><th>{{ t("Mode") }}</th>
+          <th>{{ t("Forwarder") }}</th><th>{{ t("ETA") }}</th><th class="num">{{ t("In stage") }}</th>
+          <th class="num">{{ t("Qty") }}</th>
           <th class="num">{{ t("Value") }}</th><th>{{ t("Customers") }}</th><th>{{ t("Docs") }}</th><th></th>
         </tr>
       </thead>
@@ -114,12 +119,14 @@
             {% if s.is_consolidated %}<div class="tiny muted">{{ t("consolidated") }}</div>{% endif %}
           </td>
           <td class="small">{{ (s.mode or '—') | upper }}</td>
+          <td class="small">{{ s.forwarder.name if s.forwarder else '—' }}</td>
           <td class="small nowrap">{{ s.eta | shortdate }}</td>
           <td class="num">
             {% if s.is_open %}
               <span class="pill {{ 'red' if s.days_in_stage > 30 else 'amber' if s.days_in_stage > 14 else 'grey' }}">{{ s.days_in_stage }}d</span>
             {% else %}<span class="muted">—</span>{% endif %}
           </td>
+          <td class="num small">{{ s.invoiced_qty | money if s.invoiced_qty else '—' }}</td>
           <td class="num small">{{ s.total_value | money }}</td>
           <td class="small">
             {% if s.allocated_customers %}

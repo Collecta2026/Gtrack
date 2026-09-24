@@ -32,7 +32,7 @@
   <div class="table-wrap">
     <table>
       <thead><tr><th>{{ t("PO number") }}</th><th>{{ t("Supplier") }}</th><th>{{ t("Brand") }}</th><th>{{ t("Ordered") }}</th>
-        <th>{{ t("Expected ready") }}</th><th>{{ t("Status") }}</th><th class="num">{{ t("Lines") }}</th><th class="num">{{ t("Value") }}</th><th>{{ t("Shipments") }}</th></tr></thead>
+        <th>{{ t("Expected ready") }}</th><th>{{ t("Status") }}</th><th>{{ t("Model") }}</th><th class="num">{{ t("Qty") }}</th><th class="num">{{ t("Lines") }}</th><th class="num">{{ t("Value") }}</th><th>{{ t("Shipments") }}</th></tr></thead>
       <tbody>
       {% for p in pos %}
         <tr>
@@ -45,6 +45,8 @@
             {% if p.is_overdue %}<span class="pill red">{{ t("overdue") }}</span>{% endif %}
           </td>
           <td><span class="pill {{ 'green' if p.status == 'fulfilled' else 'grey' if p.status in ['draft','cancelled'] else 'navy' }}">{{ p.status_label }}</span></td>
+          <td class="small">{{ p.models_summary or '—' }}</td>
+          <td class="num small">{{ p.qty_ordered_total | money if p.qty_ordered_total else '—' }}</td>
           <td class="num small">{{ p.lines | length }}</td>
           <td class="num small">{{ p.total_value | money(p.currency) }}</td>
           <td class="small">

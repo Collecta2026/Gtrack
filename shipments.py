@@ -97,24 +97,37 @@ def index():
 
     shipments = q.order_by(Shipment.id.desc()).all()
 
-    if status_filter == "open":
+    # "All" leaves everything reachable — including cancelled and re-exported
+    # shipments, which belong to none of the three plain statuses.
+    stages_for_status = Stage.stages_for_status(status_filter)
+    if stages_for_status is not None:
+        shipments = [s for s in shipments if s.current_stage in stages_for_status]
+    elif status_filter == "open":
         shipments = [s for s in shipments if s.is_open]
     elif status_filter == "closed":
         shipments = [s for s in shipments if not s.is_open]
     elif status_filter == "delayed":
         shipments = [s for s in shipments if s.is_delayed]
+    elif status_filter == "cut_off":
+        shipments = [s for s in shipments if s.cut_off_missed]
+    elif status_filter == "arriving":
+        horizon = date.today() + timedelta(days=21)
+        shipments = [s for s in shipments
+                     if s.is_open and s.eta and date.today() <= s.eta <= horizon]
 
     fmt = request.args.get("export")
     if fmt:
         headers = ["Reference", "Stage", "Route type", "Exporter", "Brand", "Supplier",
-                   "Route", "Mode", "ETA", "Days in stage", "Value", "Customers"]
+                   "Route", "Mode", "Forwarder", "ETA", "Days in stage", "Quantity",
+                   "Value", "Customers"]
         rows = [[s.reference_no, s.stage_label, s.route_label,
                  s.exporter.name if s.exporter else "",
                  s.brand.brand_name if s.brand else "",
                  s.supplier.name if s.supplier else "",
                  f"{s.origin or ''} → {s.destination or ''}", (s.mode or "").upper(),
+                 s.forwarder.name if s.forwarder else "",
                  s.eta.strftime("%d %b %Y") if s.eta else "",
-                 s.days_in_stage, round(s.total_value, 2),
+                 s.days_in_stage, round(s.invoiced_qty, 2), round(s.total_value, 2),
                  ", ".join(c.customer_name for c in s.allocated_customers)]
                 for s in shipments]
         return export_response(fmt, "shipments", "Shipment register", headers, rows)
@@ -123,6 +136,7 @@ def index():
                            brands=Brand.query.order_by(Brand.brand_name).all(),
                            suppliers=Supplier.query.order_by(Supplier.name).all(),
                            stages=[(c, Stage.label(c)) for c in Stage.ORDER],
+                           status_groups=Stage.STATUS_GROUPS,
                            modes=MODES, route_types=ROUTE_TYPES, filters=dict(
                                stage=stage, brand=brand_id, supplier=supplier_id,
                                mode=mode, route=route, status=status_filter, q=search))
@@ -151,6 +165,65 @@ def board():
         columns.append(dict(code=code, label=Stage.label(code),
                             owner=Stage.OWNERS.get(code, "—"), shipments=items))
     return render_template("shipments/board.html", columns=columns)
+
+
+@bp.route("/progress")
+@login_required
+def progress():
+    """The same pipeline read the other way round. The board answers "what is
+    sitting at each stage"; this answers "where has this shipment got to, and
+    what is still ahead of it" — one line per shipment, every stage marked done,
+    current or outstanding, so progress can be shown to someone in one glance."""
+    stage_filter = request.args.get("stage") or ""
+    status_filter = request.args.get("status") or "open"
+    search = (request.args.get("q") or "").strip()
+
+    shipments = visible_shipments(Shipment.query).order_by(Shipment.id.desc()).all()
+
+    stages_for_status = Stage.stages_for_status(status_filter)
+    if stages_for_status is not None:
+        shipments = [s for s in shipments if s.current_stage in stages_for_status]
+    elif status_filter == "open":
+        shipments = [s for s in shipments if s.is_open]
+    elif status_filter == "delayed":
+        shipments = [s for s in shipments if s.is_delayed]
+    if stage_filter:
+        shipments = [s for s in shipments if s.current_stage == stage_filter]
+    if search:
+        needle = search.lower()
+        shipments = [s for s in shipments
+                     if needle in (s.reference_no or "").lower()
+                     or needle in (s.description or "").lower()
+                     or (s.brand and needle in s.brand.brand_name.lower())]
+
+    rows = []
+    for s in shipments:
+        # Dates actually recorded against each stage, where we have them, so a
+        # completed marker can say when rather than just that.
+        reached = {}
+        for h in s.status_history:
+            if h.event_date and (h.status_code not in reached
+                                 or h.event_date < reached[h.status_code]):
+                reached[h.status_code] = h.event_date
+
+        here = Stage.index(s.current_stage)
+        steps = []
+        for i, code in enumerate(Stage.ORDER):
+            state = "done" if (here >= 0 and i < here) else \
+                    "current" if i == here else "todo"
+            steps.append(dict(code=code, label=Stage.label(code),
+                              state=state, on=reached.get(code)))
+        # Cancelled and re-exported sit outside the twelve — flag them plainly
+        # rather than pretending they are mid-pipeline.
+        ended = s.current_stage if s.current_stage in (Stage.CANCELLED, Stage.RE_EXPORTED) else None
+        rows.append(dict(shipment=s, steps=steps, ended=ended,
+                         done=sum(1 for x in steps if x["state"] == "done"),
+                         total=len(Stage.ORDER)))
+
+    return render_template("shipments/progress.html", rows=rows,
+                           stages=[(c, Stage.label(c)) for c in Stage.ORDER],
+                           status_groups=Stage.STATUS_GROUPS,
+                           filters=dict(stage=stage_filter, status=status_filter, q=search))
 
 
 # --------------------------------------------------------------------------

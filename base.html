@@ -17,51 +17,80 @@
       <a href="{{ url_for('dashboard.index') }}" class="{{ 'active' if (request.endpoint or '') == 'dashboard.index' }}">{{ t("Dashboard") }}</a>
       <a href="{{ url_for('search.index') }}" class="{{ 'active' if (request.endpoint or '') == 'search.index' }}">{{ t("Search") }}</a>
 
-      <div class="group">{{ t("Shipments") }}</div>
-      <a href="{{ url_for('shipments.index') }}" class="{{ 'active' if (request.endpoint or '') == 'shipments.index' }}">{{ t("Shipment register") }}</a>
-      <a href="{{ url_for('shipments.board') }}" class="{{ 'active' if (request.endpoint or '') == 'shipments.board' }}">{{ t("Pipeline board") }}</a>
+      <div class="nav-group" data-group="shipments">
+        <button type="button" class="group"><span>{{ t("Shipments") }}</span><span class="chev" aria-hidden="true"></span></button>
+        <div class="group-items">
+          <a href="{{ url_for('shipments.index') }}" class="{{ 'active' if (request.endpoint or '') == 'shipments.index' }}">{{ t("Shipment register") }}</a>
+          <a href="{{ url_for('shipments.board') }}" class="{{ 'active' if (request.endpoint or '') == 'shipments.board' }}">{{ t("Pipeline board") }}</a>
+          <a href="{{ url_for('shipments.progress') }}" class="{{ 'active' if (request.endpoint or '') == 'shipments.progress' }}">{{ t("Stage progress") }}</a>
+        </div>
+      </div>
 
       {% if current_user.can('view_all') %}
-      <div class="group">{{ t("Procurement") }}</div>
-      <a href="{{ url_for('purchase_orders.index') }}" class="{{ 'active' if 'purchase_orders' in (request.endpoint or '') }}">{{ t("Purchase orders") }}</a>
-      <a href="{{ url_for('finance.invoices') }}" class="{{ 'active' if (request.endpoint or '') == 'finance.invoices' }}">{{ t("Supplier invoices") }}</a>
-      <a href="{{ url_for('finance.quotations') }}" class="{{ 'active' if (request.endpoint or '') == 'finance.quotations' }}">{{ t("Freight quotations") }}</a>
+      <div class="nav-group" data-group="procurement">
+        <button type="button" class="group"><span>{{ t("Procurement") }}</span><span class="chev" aria-hidden="true"></span></button>
+        <div class="group-items">
+          <a href="{{ url_for('purchase_orders.index') }}" class="{{ 'active' if 'purchase_orders' in (request.endpoint or '') }}">{{ t("Purchase orders") }}</a>
+          <a href="{{ url_for('finance.invoices') }}" class="{{ 'active' if (request.endpoint or '') == 'finance.invoices' }}">{{ t("Supplier invoices") }}</a>
+          <a href="{{ url_for('finance.quotations') }}" class="{{ 'active' if (request.endpoint or '') == 'finance.quotations' }}">{{ t("Freight quotations") }}</a>
+        </div>
+      </div>
       {% endif %}
 
-      <div class="group">{{ t("Equipment") }}</div>
-      <a href="{{ url_for('assets.index') }}" class="{{ 'active' if (request.endpoint or '') == 'assets.index' }}">{{ t("Serial register") }}</a>
-      <a href="{{ url_for('assets.allocations') }}" class="{{ 'active' if (request.endpoint or '') == 'assets.allocations' }}">{{ t("Allocations") }}</a>
-      <a href="{{ url_for('assets.customers') }}" class="{{ 'active' if (request.endpoint or '') == 'assets.customers' }}">{{ t("Customers") }}</a>
-      {% if current_user.can('view_all') %}
-      <a href="{{ url_for('assets.hub_stock') }}" class="{{ 'active' if (request.endpoint or '') == 'assets.hub_stock' }}">{{ t("Fulfilment centre stock") }}</a>
-      {% endif %}
+      <div class="nav-group" data-group="stock">
+        <button type="button" class="group"><span>{{ t("Stock") }}</span><span class="chev" aria-hidden="true"></span></button>
+        <div class="group-items">
+          <a href="{{ url_for('assets.index') }}" class="{{ 'active' if (request.endpoint or '') == 'assets.index' }}">{{ t("Serial register") }}</a>
+          <a href="{{ url_for('assets.allocations') }}" class="{{ 'active' if (request.endpoint or '') == 'assets.allocations' }}">{{ t("Allocations") }}</a>
+          <a href="{{ url_for('assets.customers') }}" class="{{ 'active' if (request.endpoint or '') == 'assets.customers' }}">{{ t("Customers") }}</a>
+          {% if current_user.can('view_all') %}
+          <a href="{{ url_for('assets.hub_stock') }}" class="{{ 'active' if (request.endpoint or '') == 'assets.hub_stock' }}">{{ t("Fulfilment centre stock") }}</a>
+          {% endif %}
+        </div>
+      </div>
 
       {% if current_user.can('view_all') or current_user.can('edit_cost') %}
-      <div class="group">{{ t("Finance") }}</div>
-      <a href="{{ url_for('finance.costs') }}" class="{{ 'active' if (request.endpoint or '') == 'finance.costs' }}">{{ t("Shipment costs") }}</a>
-      <a href="{{ url_for('finance.bank_registrations') }}" class="{{ 'active' if (request.endpoint or '') == 'finance.bank_registrations' }}">{{ t("Form 4 register") }}</a>
+      <div class="nav-group" data-group="finance">
+        <button type="button" class="group"><span>{{ t("Finance") }}</span><span class="chev" aria-hidden="true"></span></button>
+        <div class="group-items">
+          <a href="{{ url_for('finance.costs') }}" class="{{ 'active' if (request.endpoint or '') == 'finance.costs' }}">{{ t("Shipment costs") }}</a>
+          <a href="{{ url_for('finance.bank_registrations') }}" class="{{ 'active' if (request.endpoint or '') == 'finance.bank_registrations' }}">{{ t("Form 4 register") }}</a>
+        </div>
+      </div>
       {% endif %}
 
-      <div class="group">{{ t("Insight") }}</div>
-      {% if current_user.can('view_reports') %}
-      <a href="{{ url_for('reports.index') }}" class="{{ 'active' if 'reports.' in (request.endpoint or '') }}">{{ t("Reports & KPIs") }}</a>
-      {% endif %}
-      <a href="{{ url_for('admin.notifications') }}" class="{{ 'active' if (request.endpoint or '') == 'admin.notifications' }}">{{ t("Notifications") }}</a>
-      <a href="{{ url_for('help.index') }}" class="{{ 'active' if (request.endpoint or '') == 'help.index' }}">{{ t("Help & guide") }}</a>
+      <div class="nav-group" data-group="insight">
+        <button type="button" class="group"><span>{{ t("Insight") }}</span><span class="chev" aria-hidden="true"></span></button>
+        <div class="group-items">
+          {% if current_user.can('view_reports') %}
+          <a href="{{ url_for('reports.index') }}" class="{{ 'active' if 'reports.' in (request.endpoint or '') }}">{{ t("Reports & KPIs") }}</a>
+          {% endif %}
+          <a href="{{ url_for('admin.notifications') }}" class="{{ 'active' if (request.endpoint or '') == 'admin.notifications' }}">{{ t("Notifications") }}</a>
+          <a href="{{ url_for('help.index') }}" class="{{ 'active' if (request.endpoint or '') == 'help.index' }}">{{ t("Help & guide") }}</a>
+        </div>
+      </div>
 
       {% if current_user.can('*') %}
-      <div class="group">{{ t("Administration") }}</div>
-      <a href="{{ url_for('admin.index') }}" class="{{ 'active' if (request.endpoint or '') == 'admin.index' }}">{{ t("Admin") }}</a>
-      <a href="{{ url_for('admin.users') }}" class="{{ 'active' if (request.endpoint or '') == 'admin.users' }}">{{ t("Users") }}</a>
-      <a href="{{ url_for('admin.roles') }}" class="{{ 'active' if (request.endpoint or '') == 'admin.roles' }}">{{ t("Roles") }}</a>
-      <a href="{{ url_for('admin.authorisation') }}" class="{{ 'active' if (request.endpoint or '') == 'admin.authorisation' }}">{{ t("Authorisation matrix") }}</a>
-      <a href="{{ url_for('admin.fx_rates') }}" class="{{ 'active' if (request.endpoint or '') == 'admin.fx_rates' }}">{{ t("FX rates") }}</a>
-      <a href="{{ url_for('masters.index') }}" class="{{ 'active' if 'masters' in (request.endpoint or '') }}">{{ t("Master data") }}</a>
-      <a href="{{ url_for('admin.notification_rules') }}" class="{{ 'active' if (request.endpoint or '') == 'admin.notification_rules' }}">{{ t("Notification rules") }}</a>
-      <a href="{{ url_for('admin.audit') }}" class="{{ 'active' if (request.endpoint or '') == 'admin.audit' }}">{{ t("Audit log") }}</a>
+      <div class="nav-group" data-group="administration">
+        <button type="button" class="group"><span>{{ t("Administration") }}</span><span class="chev" aria-hidden="true"></span></button>
+        <div class="group-items">
+          <a href="{{ url_for('admin.index') }}" class="{{ 'active' if (request.endpoint or '') == 'admin.index' }}">{{ t("Admin") }}</a>
+          <a href="{{ url_for('admin.users') }}" class="{{ 'active' if (request.endpoint or '') == 'admin.users' }}">{{ t("Users") }}</a>
+          <a href="{{ url_for('admin.roles') }}" class="{{ 'active' if (request.endpoint or '') == 'admin.roles' }}">{{ t("Roles") }}</a>
+          <a href="{{ url_for('admin.authorisation') }}" class="{{ 'active' if (request.endpoint or '') == 'admin.authorisation' }}">{{ t("Authorisation matrix") }}</a>
+          <a href="{{ url_for('admin.fx_rates') }}" class="{{ 'active' if (request.endpoint or '') == 'admin.fx_rates' }}">{{ t("FX rates") }}</a>
+          <a href="{{ url_for('masters.index') }}" class="{{ 'active' if 'masters' in (request.endpoint or '') }}">{{ t("Master data") }}</a>
+          <a href="{{ url_for('admin.notification_rules') }}" class="{{ 'active' if (request.endpoint or '') == 'admin.notification_rules' }}">{{ t("Notification rules") }}</a>
+          <a href="{{ url_for('admin.audit') }}" class="{{ 'active' if (request.endpoint or '') == 'admin.audit' }}">{{ t("Audit log") }}</a>
+        </div>
+      </div>
       {% elif current_user.can('edit_masters') %}
-      <div class="group">{{ t("Administration") }}</div>
-      <a href="{{ url_for('masters.index') }}" class="{{ 'active' if 'masters' in (request.endpoint or '') }}">{{ t("Master data") }}</a>
+      <div class="nav-group" data-group="administration">
+        <button type="button" class="group"><span>{{ t("Administration") }}</span><span class="chev" aria-hidden="true"></span></button>
+        <div class="group-items">
+          <a href="{{ url_for('masters.index') }}" class="{{ 'active' if 'masters' in (request.endpoint or '') }}">{{ t("Master data") }}</a>
+        </div>
+      </div>
       {% endif %}
     </nav>
     <div class="whoami">
@@ -104,5 +133,35 @@
     </div>
   </div>
 </div>
+
+<script>
+// Sidebar sections fold away, and stay folded between visits. A section holding
+// the page you are on always opens, so you can never lose your own position.
+(function () {
+  var KEY = 'gtrack.nav.collapsed';
+  var saved = [];
+  try { saved = JSON.parse(localStorage.getItem(KEY) || '[]'); } catch (e) { saved = []; }
+
+  document.querySelectorAll('.nav-group').forEach(function (group) {
+    var name = group.getAttribute('data-group');
+    var holdsCurrentPage = !!group.querySelector('a.active');
+    if (saved.indexOf(name) !== -1 && !holdsCurrentPage) group.classList.add('collapsed');
+
+    var button = group.querySelector('.group');
+    if (!button) return;
+    button.setAttribute('aria-expanded', String(!group.classList.contains('collapsed')));
+    button.addEventListener('click', function () {
+      group.classList.toggle('collapsed');
+      var collapsed = group.classList.contains('collapsed');
+      button.setAttribute('aria-expanded', String(!collapsed));
+      var list = [];
+      document.querySelectorAll('.nav-group.collapsed').forEach(function (g) {
+        list.push(g.getAttribute('data-group'));
+      });
+      try { localStorage.setItem(KEY, JSON.stringify(list)); } catch (e) { /* private mode */ }
+    });
+  });
+})();
+</script>
 </body>
 </html>

@@ -56,6 +56,61 @@ def to_excel(filename, headers, rows, title=None):
     )
 
 
+def to_excel_workbook(filename, sheets):
+    """One workbook, one sheet per dataset — for "export everything".
+
+    `sheets` is a list of (sheet_name, headers, rows). Excel refuses sheet names
+    over 31 characters or containing []:*?/\\, and refuses duplicates, so names
+    are trimmed and de-duplicated here rather than failing at save time.
+    """
+    from openpyxl import Workbook
+    from openpyxl.styles import Font, PatternFill, Alignment
+    from openpyxl.utils import get_column_letter
+
+    wb = Workbook()
+    wb.remove(wb.active)
+    header_fill = PatternFill("solid", fgColor="1F3A5F")
+    used = set()
+
+    for name, headers, rows in sheets:
+        safe = "".join(ch for ch in str(name) if ch not in "[]:*?/\\")[:31] or "Sheet"
+        base, n = safe, 2
+        while safe.lower() in used:
+            suffix = f" {n}"
+            safe = base[:31 - len(suffix)] + suffix
+            n += 1
+        used.add(safe.lower())
+
+        ws = wb.create_sheet(title=safe)
+        ws.append(list(headers))
+        for cell in ws[1]:
+            cell.font = Font(bold=True, color="FFFFFF")
+            cell.fill = header_fill
+            cell.alignment = Alignment(vertical="center")
+        ws.freeze_panes = "A2"
+        for row in rows:
+            ws.append(list(row))
+        for i, header in enumerate(headers, start=1):
+            longest = len(str(header))
+            for row in rows:
+                if i <= len(row):
+                    value = row[i - 1]
+                    longest = max(longest, len(str(value if value is not None else "")))
+            ws.column_dimensions[get_column_letter(i)].width = min(50, max(10, longest + 2))
+
+    if not wb.sheetnames:                      # nothing to write — still give a file
+        wb.create_sheet(title="Empty")
+
+    buf = io.BytesIO()
+    wb.save(buf)
+    buf.seek(0)
+    return Response(
+        buf.read(),
+        mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        headers={"Content-Disposition": f"attachment; filename={filename}.xlsx"},
+    )
+
+
 def to_pdf(filename, title, headers, rows, subtitle=None):
     from reportlab.lib import colors
     from reportlab.lib.pagesizes import A4, landscape

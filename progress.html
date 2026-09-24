@@ -1,0 +1,87 @@
+{% extends "base.html" %}
+{% block heading %}{{ t("Stage progress") }}{% endblock %}
+{% block crumb %}{{ rows | length }} {{ t("shipments") }} · {{ t("completed, current and outstanding stages") }}{% endblock %}
+
+{% block actions %}
+  <a class="btn ghost sm" href="{{ url_for('shipments.board') }}">{{ t("Board view") }}</a>
+  <a class="btn ghost sm" href="{{ url_for('shipments.index') }}">{{ t("List view") }}</a>
+{% endblock %}
+
+{% block content %}
+
+<div class="card">
+  <div class="card-body">
+    <form method="get" class="filters">
+      <div class="field">
+        <label>{{ t("Search") }}</label>
+        <input type="text" name="q" value="{{ filters.q }}" placeholder="{{ t('Reference, brand, description…') }}">
+      </div>
+      <div class="field">
+        <label>{{ t("Status") }}</label>
+        <select name="status">
+          <option value="all" {{ 'selected' if filters.status == 'all' }}>{{ t("All") }}</option>
+          <option value="open" {{ 'selected' if filters.status == 'open' }}>{{ t("Open") }}</option>
+          {% for key, label, codes in status_groups %}
+            <option value="{{ key }}" {{ 'selected' if filters.status == key }}>{{ t(label) }}</option>
+          {% endfor %}
+          <option value="delayed" {{ 'selected' if filters.status == 'delayed' }}>{{ t("Delayed") }}</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>{{ t("Stage") }}</label>
+        <select name="stage">
+          <option value="">{{ t("Any") }}</option>
+          {% for code, label in stages %}
+            <option value="{{ code }}" {{ 'selected' if filters.stage == code }}>{{ label }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="field"><label>&nbsp;</label><button class="btn sm" type="submit">{{ t("Apply") }}</button></div>
+    </form>
+  </div>
+</div>
+
+{% if rows %}
+  {% for row in rows %}
+  <div class="card prog-card">
+    <div class="prog-head">
+      <div>
+        <a class="prog-ref" href="{{ url_for('shipments.detail', shipment_id=row.shipment.id) }}">{{ row.shipment.reference_no }}</a>
+        <span class="tiny muted">
+          {{ row.shipment.brand.brand_name if row.shipment.brand else '—' }} ·
+          {{ row.shipment.origin or '—' }} → {{ row.shipment.destination or '—' }}
+          {% if row.shipment.forwarder %} · {{ row.shipment.forwarder.name }}{% endif %}
+        </span>
+      </div>
+      <div class="prog-meta">
+        {% if row.ended %}
+          <span class="pill red">{{ row.shipment.stage_label }}</span>
+        {% else %}
+          <span class="pill {{ 'green' if row.done >= 11 else 'amber' }}">{{ row.done }} / {{ row.total }} {{ t("stages done") }}</span>
+          {% if row.shipment.eta %}<span class="tiny muted">{{ t("ETA") }} {{ row.shipment.eta | shortdate }}</span>{% endif %}
+          {% if row.shipment.is_delayed %}<span class="pill red">{{ t("delayed") }}</span>{% endif %}
+        {% endif %}
+      </div>
+    </div>
+
+    <ol class="prog-steps">
+      {% for step in row.steps %}
+        <li class="prog-step {{ step.state }}">
+          <span class="prog-dot" aria-hidden="true"></span>
+          <span class="prog-label">{{ step.label }}</span>
+          <span class="prog-when">
+            {% if step.on %}{{ step.on | shortdate }}
+            {% elif step.state == 'current' %}{{ t("in progress") }}
+            {% elif step.state == 'done' %}{{ t("done") }}
+            {% else %}{{ t("outstanding") }}{% endif %}
+          </span>
+        </li>
+      {% endfor %}
+    </ol>
+  </div>
+  {% endfor %}
+{% else %}
+  <div class="card"><div class="empty">{{ t("No shipments match these filters.") }}</div></div>
+{% endif %}
+
+{% endblock %}
